@@ -1,0 +1,7 @@
+# Direct runtime dependencies are pinned for reproducible local setup.
+Django==5.2.16
+django-environ==0.14.0
+httpx==0.28.1
+PyMuPDF==1.28.0
+python-docx==1.2.0
+PyYAML==6.0.3

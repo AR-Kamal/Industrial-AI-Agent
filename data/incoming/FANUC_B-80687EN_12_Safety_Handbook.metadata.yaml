@@ -1,0 +1,19 @@
+document_id: FANUC-B-80687EN-12
+title: FANUC Robot Safety Handbook
+document_code: B-80687EN/12
+manufacturer: FANUC
+document_type: safety_handbook
+equipment_family: FANUC Robot
+equipment_model: General FANUC Robot Systems
+subsystem: safety
+edition: "12"
+revision_date: "2014-09"
+language: English
+approval_status: approved_for_prototype
+current_status: requires_version_verification
+safety_priority: critical
+access_level: internal
+source_type: manufacturer_document
+notes: >
+  Initial prototype safety document. This document is not a complete
+  model-specific troubleshooting or maintenance manual.

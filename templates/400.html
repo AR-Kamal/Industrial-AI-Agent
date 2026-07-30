@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Bad request{% endblock %}
+{% block content %}
+  <div class="container py-5 text-center">
+    <h1 class="display-6">The request could not be processed</h1>
+    <p class="text-secondary">Check the information supplied and try again.</p>
+    <a class="btn btn-primary" href="{% url 'home' %}">Return home</a>
+  </div>
+{% endblock %}

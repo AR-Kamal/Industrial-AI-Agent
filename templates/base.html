@@ -1,0 +1,45 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Standalone AI Manufacturing training prototype">
+    <title>{% block title %}AI Manufacturing Support{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
+  </head>
+  <body class="bg-body-tertiary d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container">
+        <a class="navbar-brand fw-semibold" href="{% url 'home' %}">
+          AI Manufacturing Support
+        </a>
+        <div class="d-flex align-items-center gap-2">
+          {% if user.is_authenticated %}
+            <a class="btn btn-outline-light btn-sm" href="{% url 'chatbot:index' %}">
+              Chat
+            </a>
+            <form method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button class="btn btn-warning btn-sm" type="submit">Log out</button>
+            </form>
+          {% else %}
+            <a class="btn btn-warning btn-sm" href="{% url 'login' %}">Log in</a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+
+    <main class="flex-grow-1">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="border-top bg-white py-3">
+      <div class="container small text-secondary">
+        Training demonstration only. No live machine connection or control capability.
+      </div>
+    </footer>
+  </body>
+</html>

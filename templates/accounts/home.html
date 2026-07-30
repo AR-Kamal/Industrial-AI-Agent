@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Home | AI Manufacturing Support{% endblock %}
+
+{% block content %}
+  <section class="hero-section py-5">
+    <div class="container py-lg-5">
+      <div class="row align-items-center g-5">
+        <div class="col-lg-7">
+          <span class="badge text-bg-warning mb-3">Local training prototype</span>
+          <h1 class="display-5 fw-bold">Technical support for the FANUC ER-4iA pilot</h1>
+          <p class="lead text-secondary mt-3">
+            A standalone workspace for source-grounded manufacturing questions and
+            guided troubleshooting. This foundation does not yet generate AI answers.
+          </p>
+          {% if user.is_authenticated %}
+            <a class="btn btn-primary btn-lg" href="{% url 'chatbot:index' %}">
+              Open chatbot
+            </a>
+          {% else %}
+            <a class="btn btn-primary btn-lg" href="{% url 'login' %}">
+              Log in to continue
+            </a>
+          {% endif %}
+        </div>
+        <div class="col-lg-5">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+              <h2 class="h5">Safety boundary</h2>
+              <p class="mb-0 text-secondary">
+                The application is not connected to any robot, PLC, sensor, HMI,
+                production system, or safety circuit. Always follow approved procedures
+                and qualified personnel.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

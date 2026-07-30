@@ -1,0 +1,8 @@
+<article
+  class="chat-message chat-message-{{ message.role }}{% if message.status == 'error' %} chat-message-error{% elif message.status == 'blocked' %} chat-message-blocked{% endif %}"
+>
+  <div class="small fw-semibold mb-1">
+    {% if message.role == "user" %}You{% else %}Manufacturing assistant{% endif %}
+  </div>
+  <div>{{ message.content|linebreaksbr }}</div>
+</article>

@@ -1,0 +1,65 @@
+:root {
+  --manufacturing-navy: #12304a;
+}
+
+body {
+  color: #1f2933;
+}
+
+.navbar {
+  background-color: var(--manufacturing-navy) !important;
+}
+
+.hero-section {
+  background:
+    linear-gradient(135deg, rgba(18, 48, 74, 0.08), rgba(255, 193, 7, 0.08));
+}
+
+.chat-shell {
+  min-height: 31rem;
+}
+
+.chat-shell .card-body {
+  overflow-y: auto;
+}
+
+.empty-state {
+  max-width: 32rem;
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.chat-message {
+  border-radius: 0.75rem;
+  max-width: 85%;
+  padding: 0.85rem 1rem;
+  white-space: normal;
+}
+
+.chat-message-user {
+  align-self: flex-end;
+  background: #dbeafe;
+}
+
+.chat-message-assistant {
+  align-self: flex-start;
+  background: #f1f5f9;
+}
+
+.chat-message-error,
+.chat-message-blocked {
+  border-left: 0.25rem solid #dc3545;
+}
+
+.htmx-indicator {
+  display: none;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  display: block;
+}

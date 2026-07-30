@@ -1,0 +1,87 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <div id="content-main">
+    <p>
+      <a href="{% url 'admin:knowledge_base_knowledgedocument_change' document.pk %}">
+        Edit document metadata
+      </a>
+    </p>
+
+    <fieldset class="module aligned">
+      <h2>Document metadata</h2>
+      <div class="form-row"><strong>ID:</strong> {{ document.document_id }}</div>
+      <div class="form-row"><strong>Title:</strong> {{ document.title }}</div>
+      <div class="form-row"><strong>Code:</strong> {{ document.document_code }}</div>
+      <div class="form-row"><strong>Manufacturer:</strong> {{ document.manufacturer }}</div>
+      <div class="form-row"><strong>Equipment:</strong> {{ document.equipment_family }} / {{ document.equipment_model }}</div>
+      <div class="form-row"><strong>Approval:</strong> {{ document.get_approval_status_display }}</div>
+      <div class="form-row"><strong>Lifecycle:</strong> {{ document.get_lifecycle_status_display }}</div>
+      <div class="form-row"><strong>Version verification:</strong> {{ document.get_current_version_verification_status_display }}</div>
+      <div class="form-row"><strong>Safety priority:</strong> {{ document.get_safety_priority_display }}</div>
+      <div class="form-row"><strong>Checksum:</strong> <code>{{ document.checksum }}</code></div>
+      <div class="form-row"><strong>Notes:</strong> {{ document.notes|linebreaksbr }}</div>
+    </fieldset>
+
+    {% if version %}
+      <fieldset class="module">
+        <h2>Latest extraction</h2>
+        <p><strong>Version:</strong> {{ version.version_id }}</p>
+        <p><strong>Pages:</strong> {{ version.page_count }}</p>
+        <h3>Processing warnings</h3>
+        <pre>{{ version.extraction_warnings|pprint }}</pre>
+        <h3>Extraction errors</h3>
+        <pre>{{ version.extraction_errors|pprint }}</pre>
+        <details>
+          <summary>Extracted text</summary>
+          <pre style="white-space: pre-wrap; max-height: 35rem; overflow: auto;">{{ version.extracted_text }}</pre>
+        </details>
+      </fieldset>
+    {% endif %}
+
+    <div class="module">
+      <h2>Generated chunks ({{ chunks|length }})</h2>
+      {% for chunk in chunks %}
+        <details style="margin: 1rem;">
+          <summary>
+            <code>{{ chunk.chunk_id }}</code> —
+            {{ chunk.chapter }} / {{ chunk.section }} —
+            pages {{ chunk.page_start|default:"?" }}–{{ chunk.page_end|default:"?" }} —
+            {{ chunk.token_count }} tokens —
+            {{ chunk.get_review_status_display }}
+          </summary>
+          <p>
+            Warning: {{ chunk.contains_warning|yesno:"yes,no" }};
+            Caution: {{ chunk.contains_caution|yesno:"yes,no" }}
+          </p>
+          <pre>{{ chunk.processing_warnings|pprint }}</pre>
+          <div style="white-space: pre-wrap;">{{ chunk.content }}</div>
+          <p>
+            <a href="{% url 'admin:knowledge_base_documentchunk_change' chunk.pk %}">
+              Review this chunk
+            </a>
+            {% if chunk.origin == "generated" and chunk.review_status != "superseded" %}
+              |
+              <a href="{% url 'admin:knowledge_base_documentchunk_split' chunk.pk %}">
+                Split chunk
+              </a>
+            {% endif %}
+          </p>
+        </details>
+      {% empty %}
+        <p>No chunks have been generated.</p>
+      {% endfor %}
+    </div>
+
+    <div class="module">
+      <h2>Recent ingestion jobs</h2>
+      <ul>
+        {% for job in jobs %}
+          <li>{{ job.created_at }} — {{ job.get_status_display }} — {{ job.chunk_count }} chunks</li>
+        {% empty %}
+          <li>No ingestion jobs.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+{% endblock %}

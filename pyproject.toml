@@ -1,0 +1,25 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+extend-exclude = ["static/vendor"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "DJ"]
+
+[tool.ruff.lint.per-file-ignores]
+"manufacturing_agent/settings/local.py" = ["F403", "F405"]
+"manufacturing_agent/settings/test.py" = ["E402", "F403"]
+"apps/*/migrations/*.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["mypy_django_plugin.main"]
+check_untyped_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "manufacturing_agent.settings.test"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "manufacturing_agent.settings.test"

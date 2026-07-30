@@ -1,0 +1,74 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <div id="content-main">
+    <p>
+      <a href="{% url 'admin:knowledge_base_documentchunk_change' source.pk %}">
+        Cancel and return to the source chunk
+      </a>
+    </p>
+
+    <fieldset class="module aligned">
+      <h2>Immutable source chunk</h2>
+      <p>
+        <strong>{{ source.chunk_id }}</strong> —
+        sequence {{ source.sequence }} —
+        pages {{ source.page_start|default:"?" }}–{{ source.page_end|default:"?" }}
+      </p>
+      <pre style="white-space: pre-wrap; max-height: 28rem; overflow: auto;">{{ source.content }}</pre>
+    </fieldset>
+
+    {% if not segment_formset %}
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="stage" value="preview">
+        {{ definition_form.non_field_errors }}
+        <fieldset class="module aligned">
+          <h2>Define split points</h2>
+          {{ definition_form.as_div }}
+        </fieldset>
+        <div class="submit-row">
+          <input type="submit" value="Preview child chunks" class="default">
+          <a class="closelink" href="{% url 'admin:knowledge_base_documentchunk_change' source.pk %}">Cancel</a>
+        </div>
+      </form>
+    {% else %}
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="stage" value="apply">
+        {{ apply_form.non_field_errors }}
+        {{ apply_form.source_content_hash }}
+        {{ apply_form.marked_content }}
+        {{ segment_formset.management_form }}
+
+        {% for form in segment_formset %}
+          <fieldset class="module aligned">
+            <h2>Proposed child {{ forloop.counter }}</h2>
+            {{ form.non_field_errors }}
+            {{ form.as_div }}
+          </fieldset>
+        {% endfor %}
+
+        <fieldset class="module aligned">
+          <h2>Correction audit</h2>
+          {{ apply_form.artifact_note.errors }}
+          {{ apply_form.artifact_note.label_tag }}
+          {{ apply_form.artifact_note }}
+          {% if safety_required %}
+            <p class="warning">
+              This split is near safety/procedure-shaped content. Explicit
+              confirmation is required.
+            </p>
+          {% endif %}
+          {{ apply_form.safety_confirmed.errors }}
+          <p>{{ apply_form.safety_confirmed }} {{ apply_form.safety_confirmed.label }}</p>
+        </fieldset>
+
+        <div class="submit-row">
+          <input type="submit" value="Apply split correction" class="default">
+          <a class="closelink" href="{% url 'admin:knowledge_base_documentchunk_change' source.pk %}">Cancel without changes</a>
+        </div>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}

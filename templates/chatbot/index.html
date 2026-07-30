@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Chat | AI Manufacturing Support{% endblock %}
+
+{% block content %}
+  <div class="container py-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+      <div>
+        <h1 class="h3 mb-1">Technical support chat</h1>
+        <p class="text-secondary mb-0">FANUC ER-4iA pilot workspace</p>
+      </div>
+      <span class="badge text-bg-success align-self-start">Local Ollama</span>
+    </div>
+
+    <div class="row g-4">
+      <aside class="col-lg-3">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h2 class="h6 mb-0">Conversations</h2>
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'chatbot:index' %}">
+                New
+              </a>
+            </div>
+            <div class="list-group list-group-flush">
+              {% for item in conversations %}
+                <a
+                  class="list-group-item list-group-item-action px-0{% if conversation.pk == item.pk %} active{% endif %}"
+                  href="{% url 'chatbot:index' %}?conversation={{ item.pk }}"
+                >
+                  {{ item.title|default:"Untitled conversation"|truncatechars:42 }}
+                </a>
+              {% empty %}
+                <p class="small text-secondary mb-0">No saved conversations.</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="col-lg-9">
+        <div class="card border-0 shadow-sm chat-shell">
+          <div class="card-body p-4 chat-messages" id="chat-messages" aria-live="polite">
+            {% for message in chat_messages %}
+              {% include "chatbot/partials/message.html" with message=message %}
+            {% empty %}
+              <div class="empty-state text-center mx-auto" id="empty-chat">
+                <h2 class="h5">Start a local conversation</h2>
+                <p class="text-secondary">
+                  Answers use the configured local model and are not yet grounded in
+                  approved documents.
+                </p>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="card-footer bg-white p-3">
+            <div id="chat-form-errors"></div>
+            <form
+              method="post"
+              action="{% url 'chatbot:send_message' %}"
+              hx-post="{% url 'chatbot:send_message' %}"
+              hx-target="#chat-messages"
+              hx-swap="beforeend"
+              hx-indicator="#chat-loading"
+              hx-on::before-request="document.getElementById('empty-chat')?.remove()"
+              hx-on::after-request="if(event.detail.successful){this.reset()}"
+            >
+              {% csrf_token %}
+              <input
+                id="conversation-id"
+                name="conversation_id"
+                type="hidden"
+                value="{% if conversation %}{{ conversation.pk }}{% endif %}"
+              >
+              <div class="input-group">
+                <label class="visually-hidden" for="chat-message">Message</label>
+                <textarea
+                  class="form-control"
+                  id="chat-message"
+                  name="message"
+                  rows="2"
+                  maxlength="4000"
+                  placeholder="Ask a manufacturing training question"
+                  required
+                ></textarea>
+                <button class="btn btn-primary" type="submit">Send</button>
+              </div>
+              <div id="chat-loading" class="htmx-indicator small text-secondary mt-2">
+                Waiting for the local model…
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-warning mt-4 mb-0" role="alert">
+      Never bypass emergency stops, guards, interlocks, safety relays, or approved
+      lockout/tagout procedures.
+    </div>
+  </div>
+{% endblock %}

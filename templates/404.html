@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Page not found{% endblock %}
+{% block content %}
+  <div class="container py-5 text-center">
+    <h1 class="display-6">Page not found</h1>
+    <p class="text-secondary">The requested page does not exist.</p>
+    <a class="btn btn-primary" href="{% url 'home' %}">Return home</a>
+  </div>
+{% endblock %}

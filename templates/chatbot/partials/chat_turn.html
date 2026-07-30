@@ -1,0 +1,9 @@
+{% include "chatbot/partials/message.html" with message=turn.user_message %}
+{% include "chatbot/partials/message.html" with message=turn.assistant_message %}
+<input
+  id="conversation-id"
+  name="conversation_id"
+  type="hidden"
+  value="{{ turn.conversation.pk }}"
+  hx-swap-oob="true"
+>

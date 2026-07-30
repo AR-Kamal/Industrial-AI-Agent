@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Django and runtime data
+var/*
+!var/.gitkeep
+*.sqlite3
+*.sqlite3-journal
+*.log
+media/
+
+# Private project data and generated AI artifacts
+documents/
+uploads/
+vector_store/
+models/
+*.bin
+*.gguf
+
+# IDE and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build/package output
+build/
+dist/
+*.egg-info/
