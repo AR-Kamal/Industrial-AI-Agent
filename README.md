@@ -239,3 +239,84 @@ exact match. Otherwise, the correction becomes **Stale — revalidation
 required**, and its children remain retrieval-disabled. Review stale
 corrections before any future indexing. Splitting correction children, chunk
 merging, and unrestricted content editing are intentionally unsupported.
+
+### Bulk chunk review
+
+Export the current generated and correction-child chunks. XLSX is the default:
+
+```powershell
+python manage.py export_chunk_review_workbook FANUC-B-80687EN-12
+```
+
+The default file is
+`var\exports\FANUC-B-80687EN-12.chunk-review.xlsx`. CSV and JSON are also
+supported by choosing the extension:
+
+```powershell
+python manage.py export_chunk_review_workbook FANUC-B-80687EN-12 --output var\exports\fanuc-review.csv
+python manage.py export_chunk_review_workbook FANUC-B-80687EN-12 --output var\exports\fanuc-review.json
+```
+
+Set `proposed_action` to exactly one of `NO_CHANGE`, `APPROVE`, `EXCLUDE`,
+`CORRECT_METADATA`, or `SPLIT`. Never change `chunk_id`,
+`source_content_hash`, document identity, version, sequence, or content.
+Every changed row requires reviewer notes.
+
+For warning/caution approval or metadata correction, put this in
+`correction_payload`:
+
+```json
+{"safety_confirmed": true}
+```
+
+For a split, `correction_payload` is a JSON object:
+
+```json
+{
+  "safety_confirmed": true,
+  "artifact_note": "",
+  "children": [
+    {
+      "content": "First complete child text",
+      "chapter": "1 SAFETY",
+      "section": "1.1 FIRST TOPIC",
+      "page_start": 1,
+      "page_end": 1,
+      "contains_warning": false,
+      "contains_caution": false,
+      "retrieval_enabled": true,
+      "reviewer_notes": "Compared with PDF page 1."
+    },
+    {
+      "content": "Second complete child text",
+      "chapter": "1 SAFETY",
+      "section": "1.2 SECOND TOPIC",
+      "page_start": 2,
+      "page_end": 2,
+      "contains_warning": true,
+      "contains_caution": false,
+      "retrieval_enabled": true,
+      "reviewer_notes": "Warning and procedure verified together."
+    }
+  ]
+}
+```
+
+Run validation before applying:
+
+```powershell
+python manage.py import_chunk_reviews var\exports\FANUC-B-80687EN-12.chunk-review.xlsx --dry-run --reviewer user
+```
+
+Fix every reported row and repeat until dry-run passes. Back up SQLite, then
+apply the unchanged file:
+
+```powershell
+Copy-Item var\db.sqlite3 var\db.before-bulk-review.sqlite3
+python manage.py import_chunk_reviews var\exports\FANUC-B-80687EN-12.chunk-review.xlsx --apply --reviewer user
+```
+
+If no matching dry-run report exists, `--apply` refuses to continue unless
+`--confirm` is supplied. This explicit confirmation does not bypass validation.
+Dry-run writes `*.dry-run.json`; apply writes `*.apply-report.json`. Any invalid
+row blocks all changes, and any runtime failure rolls the transaction back.

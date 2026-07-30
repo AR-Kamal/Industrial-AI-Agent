@@ -356,6 +356,34 @@ content hash. No match or an ambiguous match marks the correction stale,
 disables its children, and requires human revalidation. The original source and
 correction record remain available for audit.
 
+### Controlled bulk review
+
+`knowledge_base.bulk_review` maps XLSX, CSV, and JSON files into the same
+validated `ReviewRow` representation. Exported rows contain immutable identity,
+hash, content, provenance, current review state, and reviewer-controlled action
+columns. Spreadsheet files are size/row limited, formulas are rejected, and
+CSV formula-like text is escaped.
+
+```mermaid
+flowchart LR
+    A[Current chunks] --> B[Export XLSX/CSV/JSON]
+    B --> C[Reviewer edits action fields]
+    C --> D[Dry-run parser and validator]
+    D -- any error --> E[Row report; no writes]
+    D -- valid --> F[Digest-bound dry-run report]
+    F --> G[Atomic apply]
+    G --> H[Review status service]
+    G --> I[Metadata correction audit]
+    G --> J[Existing split-correction service]
+```
+
+Apply requires an unchanged successful dry-run report or explicit `--confirm`,
+an authorized staff reviewer, and a fully valid batch. The command locks chunks
+and rechecks hashes inside one database transaction. Any runtime error rolls the
+whole batch back. Metadata corrections preserve content and provenance in
+`ChunkMetadataCorrection`; split actions continue through
+`ChunkSplitCorrection`.
+
 ## 11. Proposed initial dependencies
 
 Exact versions must be resolved and pinned at implementation time against a selected supported Python version; dependencies are not installed now.

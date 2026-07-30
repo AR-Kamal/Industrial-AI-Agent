@@ -196,6 +196,11 @@ Acceptance:
   confirmation, retrieval fail-closed controls, and hash-gated correction
   reapplication. Chunk merging, embeddings, vector search, and RAG remain
   deferred.
+- 2026-07-30: Extended Milestone 3 with controlled bulk chunk review. Added
+  XLSX/CSV/JSON export, neutral row validation, digest-bound dry runs,
+  staff-attributed atomic apply, metadata correction audits, and delegation of
+  split rows to the existing split service. Direct database editing and
+  automatic AI review decisions remain prohibited.
 
 ## Completion evidence
 
@@ -211,5 +216,9 @@ Acceptance:
 - Milestone 3 split-correction increment: 71 automated tests passed; migration
   `knowledge_base.0002` applied; Django checks, migration consistency, Ruff,
   mypy, and Bandit passed.
+- Milestone 3 bulk-review increment: 83 automated tests passed; migration
+  `knowledge_base.0003` applied; a real 71-row FANUC XLSX export and no-change
+  dry-run passed; Django checks, migration consistency, Ruff, mypy, and Bandit
+  passed.
 - Retrieval, embeddings, image analysis, cloud providers, and industrial
   integrations remain unimplemented.

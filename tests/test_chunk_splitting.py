@@ -124,6 +124,43 @@ def split_source(source: DocumentChunk) -> list[str]:
     return source.content.split("\n\nGENERAL PRECAUTIONS\n\n")
 
 
+def apply_payload_from_preview(response, *, safety_confirmed: bool = True) -> dict:
+    formset = response.context["segment_formset"]
+    apply_form = response.context["apply_form"]
+    payload = {
+        "stage": "apply",
+        "source_content_hash": apply_form.initial["source_content_hash"],
+        "marked_content": apply_form.initial["marked_content"],
+        f"{formset.prefix}-TOTAL_FORMS": str(formset.total_form_count()),
+        f"{formset.prefix}-INITIAL_FORMS": str(formset.initial_form_count()),
+        f"{formset.prefix}-MIN_NUM_FORMS": str(formset.min_num),
+        f"{formset.prefix}-MAX_NUM_FORMS": str(formset.max_num),
+        "artifact_note": "",
+    }
+    if safety_confirmed:
+        payload["safety_confirmed"] = "on"
+    for index, form in enumerate(formset.forms):
+        prefix = f"{formset.prefix}-{index}"
+        for name in (
+            "content",
+            "chapter",
+            "section",
+            "page_start",
+            "page_end",
+            "reviewer_notes",
+        ):
+            value = form.initial.get(name)
+            payload[f"{prefix}-{name}"] = "" if value is None else str(value)
+        for name in (
+            "contains_warning",
+            "contains_caution",
+            "retrieval_enabled",
+        ):
+            if form.initial.get(name):
+                payload[f"{prefix}-{name}"] = "on"
+    return payload
+
+
 @pytest.mark.django_db
 def test_two_child_split_inherits_metadata_and_supersedes_source(
     source_chunk: DocumentChunk,
@@ -411,11 +448,73 @@ def test_mixed_front_matter_admin_preview_creates_three_proposals(
 
     assert response.status_code == 200
     assert response.content.count(b"Proposed child") == 3
+    assert b'name="segments-TOTAL_FORMS"' in response.content
+    assert b'name="segments-INITIAL_FORMS"' in response.content
+    assert b'name="segments-MIN_NUM_FORMS"' in response.content
+    assert b'name="segments-MAX_NUM_FORMS"' in response.content
     assert not ChunkSplitCorrection.objects.exists()
+
+    apply_response = client.post(url, apply_payload_from_preview(response))
+
+    assert apply_response.status_code == 302
+    assert (
+        DocumentChunk.objects.filter(
+            parent_chunk=source_chunk,
+            is_current_generation=True,
+        ).count()
+        == 3
+    )
 
 
 @pytest.mark.django_db
 def test_staff_can_apply_previewed_split(
+    client,
+    source_chunk: DocumentChunk,
+    staff_user,
+) -> None:
+    client.force_login(staff_user)
+    url = reverse(
+        "admin:knowledge_base_documentchunk_split",
+        args=[source_chunk.pk],
+    )
+    first, second = split_source(source_chunk)
+    marked = f"{first}\n\n{SPLIT_MARKER}\n\nGENERAL PRECAUTIONS\n\n{second}"
+    preview_response = client.post(
+        url,
+        {
+            "marked_content": marked,
+            "stage": "preview",
+        },
+    )
+    assert preview_response.status_code == 200
+    assert b'name="segments-TOTAL_FORMS"' in preview_response.content
+    assert b'name="segments-INITIAL_FORMS"' in preview_response.content
+
+    payload = apply_payload_from_preview(preview_response)
+    payload["segments-0-section"] = "Front matter"
+    payload["segments-0-page_end"] = "1"
+    payload["segments-0-reviewer_notes"] = "Front matter checked."
+    payload["segments-1-chapter"] = "GENERAL PRECAUTIONS"
+    payload["segments-1-page_start"] = "2"
+    payload["segments-1-reviewer_notes"] = "Safety procedure checked."
+    response = client.post(url, payload)
+
+    assert response.status_code == 302
+    assert ChunkSplitCorrection.objects.filter(
+        source_chunk=source_chunk,
+        status=ChunkSplitCorrection.Status.APPLIED,
+    ).exists()
+    assert (
+        DocumentChunk.objects.filter(
+            parent_chunk=source_chunk,
+            is_current_generation=True,
+        ).count()
+        == 2
+    )
+
+
+@pytest.mark.django_db
+def test_missing_management_fields_redisplays_without_mutation(
     client,
     source_chunk: DocumentChunk,
     staff_user,
@@ -435,37 +534,17 @@ def test_staff_can_apply_previewed_split(
             "marked_content": marked,
             "artifact_note": "",
             "safety_confirmed": "on",
-            "segments-TOTAL_FORMS": "2",
-            "segments-INITIAL_FORMS": "0",
-            "segments-MIN_NUM_FORMS": "2",
-            "segments-MAX_NUM_FORMS": "1000",
             "segments-0-content": first,
-            "segments-0-chapter": "",
-            "segments-0-section": "Front matter",
-            "segments-0-page_start": "1",
-            "segments-0-page_end": "1",
-            "segments-0-retrieval_enabled": "on",
-            "segments-0-reviewer_notes": "Front matter checked.",
             "segments-1-content": f"GENERAL PRECAUTIONS\n\n{second}",
-            "segments-1-chapter": "GENERAL PRECAUTIONS",
-            "segments-1-section": "",
-            "segments-1-page_start": "2",
-            "segments-1-page_end": "2",
-            "segments-1-contains_warning": "on",
-            "segments-1-retrieval_enabled": "on",
-            "segments-1-reviewer_notes": "Safety procedure checked.",
         },
     )
 
-    assert response.status_code == 302
-    assert ChunkSplitCorrection.objects.filter(
-        source_chunk=source_chunk,
-        status=ChunkSplitCorrection.Status.APPLIED,
-    ).exists()
-    assert (
-        DocumentChunk.objects.filter(
-            parent_chunk=source_chunk,
-            is_current_generation=True,
-        ).count()
-        == 2
-    )
+    assert response.status_code == 200
+    assert b"TOTAL_FORMS" in response.content
+    assert b"INITIAL_FORMS" in response.content
+    assert first.encode() in response.content
+    source_chunk.refresh_from_db()
+    assert source_chunk.review_status == DocumentChunk.ReviewStatus.REQUIRES_CORRECTION
+    assert source_chunk.retrieval_enabled is False
+    assert not ChunkSplitCorrection.objects.exists()
+    assert not DocumentChunk.objects.filter(parent_chunk=source_chunk).exists()

@@ -152,3 +152,18 @@ This log records accepted decisions. New or changed decisions receive a new ADR;
   stale and disables its children until reviewed. Split children use decimal
   sequence positions and deterministic correction IDs. Chunk merging and
   unrestricted editing remain out of scope.
+
+## ADR-019 — Offline review files are validated instructions, not data imports
+
+- Status: Accepted
+- Date: 2026-07-30
+- Decision: Export current chunks to XLSX, CSV, or JSON, but interpret returned
+  rows only as proposed actions. Parse all formats into one neutral schema,
+  validate the complete batch, and apply through audited domain services in one
+  transaction.
+- Rationale: Spreadsheet review is efficient but must not become direct
+  database editing or bypass hash, provenance, safety, or split controls.
+- Consequences: Apply requires an authorized reviewer plus either a matching
+  digest-bound dry-run report or explicit confirmation. Any invalid row blocks
+  the batch. Metadata changes receive their own audit record; split changes use
+  the existing correction service. No AI generates review decisions.

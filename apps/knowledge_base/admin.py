@@ -28,6 +28,7 @@ from .forms import (
 )
 from .ingestion import process_document
 from .models import (
+    ChunkMetadataCorrection,
     ChunkSplitCorrection,
     DocumentChunk,
     DocumentVersion,
@@ -35,6 +36,8 @@ from .models import (
     KnowledgeDocument,
 )
 from .validation import validate_uploaded_document
+
+SPLIT_FORMSET_PREFIX = "segments"
 
 
 class DocumentVersionInline(admin.TabularInline):
@@ -540,7 +543,10 @@ class DocumentChunkAdmin(admin.ModelAdmin):
                         }
                         for part in parts
                     ]
-                    segment_formset = segment_formset_class(initial=initial)
+                    segment_formset = segment_formset_class(
+                        initial=initial,
+                        prefix=SPLIT_FORMSET_PREFIX,
+                    )
                     apply_form = ChunkSplitApplyForm(
                         initial={
                             "source_content_hash": source.content_hash,
@@ -550,10 +556,15 @@ class DocumentChunkAdmin(admin.ModelAdmin):
 
         if request.method == "POST" and request.POST.get("stage") == "apply":
             apply_form = ChunkSplitApplyForm(request.POST)
-            segment_formset = segment_formset_class(request.POST, prefix="segments")
+            segment_formset = segment_formset_class(
+                request.POST,
+                prefix=SPLIT_FORMSET_PREFIX,
+            )
             marked_content = request.POST.get("marked_content", "")
             safety_required = boundary_requires_confirmation(marked_content)
-            if apply_form.is_valid() and segment_formset.is_valid():
+            apply_valid = apply_form.is_valid()
+            segments_valid = segment_formset.is_valid()
+            if apply_valid and segments_valid:
                 if (
                     apply_form.cleaned_data["source_content_hash"]
                     != source.content_hash
@@ -589,6 +600,55 @@ class DocumentChunkAdmin(admin.ModelAdmin):
                             level=messages.SUCCESS,
                         )
                         return redirect("admin:knowledge_base_documentchunk_changelist")
+            elif (
+                f"{SPLIT_FORMSET_PREFIX}-TOTAL_FORMS" not in request.POST
+                or f"{SPLIT_FORMSET_PREFIX}-INITIAL_FORMS" not in request.POST
+            ):
+                indices = sorted(
+                    {
+                        int(match.group(1))
+                        for key in request.POST
+                        if (
+                            match := re.fullmatch(
+                                rf"{SPLIT_FORMSET_PREFIX}-(\d+)-content",
+                                key,
+                            )
+                        )
+                    }
+                )
+                recovered = []
+                for index in indices:
+                    prefix = f"{SPLIT_FORMSET_PREFIX}-{index}"
+                    recovered.append(
+                        {
+                            name: request.POST.get(f"{prefix}-{name}", "")
+                            for name in (
+                                "content",
+                                "chapter",
+                                "section",
+                                "page_start",
+                                "page_end",
+                                "reviewer_notes",
+                            )
+                        }
+                        | {
+                            name: f"{prefix}-{name}" in request.POST
+                            for name in (
+                                "contains_warning",
+                                "contains_caution",
+                                "retrieval_enabled",
+                            )
+                        }
+                    )
+                segment_formset = segment_formset_class(
+                    initial=recovered,
+                    prefix=SPLIT_FORMSET_PREFIX,
+                )
+                apply_form.add_error(
+                    None,
+                    "The child form metadata was incomplete. "
+                    "Your entered values are shown below; review and submit again.",
+                )
 
         context = {
             **self.admin_site.each_context(request),
@@ -694,6 +754,43 @@ class ChunkSplitCorrectionAdmin(admin.ModelAdmin):
         self,
         request: HttpRequest,
         obj: ChunkSplitCorrection | None = None,
+    ) -> bool:
+        return False
+
+
+@admin.register(ChunkMetadataCorrection)
+class ChunkMetadataCorrectionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "source_chunk",
+        "created_by",
+        "created_at",
+    )
+    search_fields = ("id", "source_chunk__chunk_id")
+    readonly_fields = (
+        "id",
+        "source_chunk",
+        "source_content_hash",
+        "before_payload",
+        "after_payload",
+        "created_by",
+        "created_at",
+    )
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(
+        self,
+        request: HttpRequest,
+        obj: ChunkMetadataCorrection | None = None,
+    ) -> bool:
+        return request.user.has_perm("knowledge_base.view_chunkmetadatacorrection")
+
+    def has_delete_permission(
+        self,
+        request: HttpRequest,
+        obj: ChunkMetadataCorrection | None = None,
     ) -> bool:
         return False
 

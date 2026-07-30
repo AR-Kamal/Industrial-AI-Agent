@@ -307,6 +307,30 @@ class ChunkSplitCorrection(models.Model):
         return f"Split {self.source_chunk_id} ({self.status})"
 
 
+class ChunkMetadataCorrection(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    source_chunk = models.ForeignKey(
+        DocumentChunk,
+        on_delete=models.PROTECT,
+        related_name="metadata_corrections",
+    )
+    source_content_hash = models.CharField(max_length=64)
+    before_payload = models.JSONField()
+    after_payload = models.JSONField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="chunk_metadata_corrections",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"Metadata correction for {self.source_chunk_id}"
+
+
 class IngestionJob(models.Model):
     class JobType(models.TextChoices):
         PROCESS = "process", "Process"
