@@ -115,6 +115,17 @@ def _review_text(value: str) -> str:
     return XML_CONTROL_PATTERN.sub("", value)
 
 
+def _canonical_content_line_endings(value: str) -> str:
+    """Canonicalize only newline encodings for immutable content comparison."""
+    return value.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _immutable_content_matches(workbook_content: str, source_content: str) -> bool:
+    return _canonical_content_line_endings(
+        workbook_content
+    ) == _canonical_content_line_endings(_review_text(source_content))
+
+
 def chunk_export_row(chunk: DocumentChunk) -> dict[str, Any]:
     return {
         "chunk_id": chunk.chunk_id,
@@ -445,7 +456,7 @@ def validate_review_rows(rows: list[ReviewRow]) -> list[RowPlan]:
         else:
             if row.source_content_hash != chunk.content_hash:
                 errors.append("Source content hash mismatch.")
-            if row.content != _review_text(chunk.content):
+            if not _immutable_content_matches(row.content, chunk.content):
                 errors.append("Exported chunk content must not be edited.")
             if (
                 row.document_id != chunk.document_id
@@ -487,7 +498,7 @@ def validate_review_rows(rows: list[ReviewRow]) -> list[RowPlan]:
                     raise ValidationError("An excluded chunk cannot enable retrieval.")
                 elif action == "CORRECT_METADATA":
                     _validate_page_range(row, chunk)
-                    if row.content != _review_text(chunk.content):
+                    if not _immutable_content_matches(row.content, chunk.content):
                         raise ValidationError(
                             "Metadata correction cannot change chunk content."
                         )

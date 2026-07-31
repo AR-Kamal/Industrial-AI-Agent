@@ -173,6 +173,10 @@ class DocumentChunk(models.Model):
     class Origin(models.TextChoices):
         GENERATED = "generated", "Generated"
         CORRECTION = "correction", "Correction child"
+        CORRECTION_REPLACEMENT = (
+            "correction_replacement",
+            "Correction replacement",
+        )
 
     chunk_id = models.CharField(primary_key=True, max_length=80)
     document = models.ForeignKey(
@@ -215,7 +219,7 @@ class DocumentChunk(models.Model):
     )
     processing_warnings = models.JSONField(default=list, blank=True)
     origin = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=Origin.choices,
         default=Origin.GENERATED,
     )
@@ -329,6 +333,57 @@ class ChunkMetadataCorrection(models.Model):
 
     def __str__(self) -> str:
         return f"Metadata correction for {self.source_chunk_id}"
+
+
+class ChunkReplacementCorrection(models.Model):
+    class Status(models.TextChoices):
+        APPLIED = "applied", "Applied"
+        STALE = "stale", "Stale — revalidation required"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    replaced_child = models.OneToOneField(
+        DocumentChunk,
+        on_delete=models.PROTECT,
+        related_name="replacement_correction",
+    )
+    replacement_child = models.ForeignKey(
+        DocumentChunk,
+        on_delete=models.PROTECT,
+        related_name="replacement_result_for",
+    )
+    old_content_hash = models.CharField(max_length=64)
+    new_content_hash = models.CharField(max_length=64)
+    corrected_content = models.TextField()
+    reason = models.TextField()
+    reviewer_notes = models.TextField()
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="chunk_replacement_corrections",
+    )
+    document = models.ForeignKey(
+        KnowledgeDocument,
+        on_delete=models.PROTECT,
+        related_name="chunk_replacement_corrections",
+    )
+    document_version = models.ForeignKey(
+        DocumentVersion,
+        on_delete=models.PROTECT,
+        related_name="chunk_replacement_corrections",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.APPLIED,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    applied_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"Replace {self.replaced_child_id} with {self.replacement_child_id}"
 
 
 class IngestionJob(models.Model):

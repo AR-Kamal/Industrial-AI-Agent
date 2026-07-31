@@ -320,3 +320,22 @@ If no matching dry-run report exists, `--apply` refuses to continue unless
 `--confirm` is supplied. This explicit confirmation does not bypass validation.
 Dry-run writes `*.dry-run.json`; apply writes `*.apply-report.json`. Any invalid
 row blocks all changes, and any runtime failure rolls the transaction back.
+
+### Replace one correction child
+
+Save the complete corrected text as a UTF-8 text file, then run:
+
+```powershell
+python manage.py replace_correction_child CHK-C-339b06c8219cf796339a4985baeb12 `
+  --content-file var\corrections\CHK-C-339b06c8219cf796339a4985baeb12.txt `
+  --source-hash 1a7211e38c18a8d7adef9b14ae718110e3f59cc56e18c30725bca12aafc8afac `
+  --reason "Complete the truncated final sentence." `
+  --reviewer-notes "Corrected text verified against the source PDF." `
+  --reviewer user `
+  --safety-confirmed
+```
+
+The command preserves and supersedes the old child, disables its retrieval,
+creates one approved `CHK-R-...` replacement, and records the audit under
+**Chunk replacement corrections**. It rejects generated, stale, unchanged,
+empty, out-of-range, unauthorized, or insufficiently reviewed replacements.

@@ -29,6 +29,7 @@ from .forms import (
 from .ingestion import process_document
 from .models import (
     ChunkMetadataCorrection,
+    ChunkReplacementCorrection,
     ChunkSplitCorrection,
     DocumentChunk,
     DocumentVersion,
@@ -791,6 +792,57 @@ class ChunkMetadataCorrectionAdmin(admin.ModelAdmin):
         self,
         request: HttpRequest,
         obj: ChunkMetadataCorrection | None = None,
+    ) -> bool:
+        return False
+
+
+@admin.register(ChunkReplacementCorrection)
+class ChunkReplacementCorrectionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "replaced_child",
+        "replacement_child",
+        "status",
+        "reviewer",
+        "created_at",
+    )
+    list_filter = ("status", "created_at")
+    search_fields = (
+        "id",
+        "replaced_child__chunk_id",
+        "replacement_child__chunk_id",
+    )
+    readonly_fields = (
+        "id",
+        "replaced_child",
+        "replacement_child",
+        "old_content_hash",
+        "new_content_hash",
+        "corrected_content",
+        "reason",
+        "reviewer_notes",
+        "reviewer",
+        "document",
+        "document_version",
+        "status",
+        "created_at",
+        "applied_at",
+    )
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(
+        self,
+        request: HttpRequest,
+        obj: ChunkReplacementCorrection | None = None,
+    ) -> bool:
+        return request.user.has_perm("knowledge_base.view_chunkreplacementcorrection")
+
+    def has_delete_permission(
+        self,
+        request: HttpRequest,
+        obj: ChunkReplacementCorrection | None = None,
     ) -> bool:
         return False
 

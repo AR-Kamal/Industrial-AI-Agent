@@ -22,6 +22,7 @@ from .models import (
     IngestionJob,
     KnowledgeDocument,
 )
+from .replacements import reapply_replacements
 from .validation import validate_document_file
 
 logger = logging.getLogger(__name__)
@@ -154,6 +155,7 @@ def _persist_result(
         created_by_sequence[draft.sequence] = chunk
 
     reapply_corrections(version.version_id)
+    reapply_replacements(version.version_id)
 
     now = timezone.now()
     version.extracted_text = extracted_text

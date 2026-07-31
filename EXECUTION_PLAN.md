@@ -201,6 +201,10 @@ Acceptance:
   staff-attributed atomic apply, metadata correction audits, and delegation of
   split rows to the existing split service. Direct database editing and
   automatic AI review decisions remain prohibited.
+- 2026-07-31: Added a minimal controlled correction-child replacement layer.
+  Original children remain auditable and superseded; deterministic replacement
+  children, reviewer audits, source-hash validation, and fail-closed
+  reprocessing are implemented. Direct content editing remains prohibited.
 
 ## Completion evidence
 
@@ -220,5 +224,8 @@ Acceptance:
   `knowledge_base.0003` applied; a real 71-row FANUC XLSX export and no-change
   dry-run passed; Django checks, migration consistency, Ruff, mypy, and Bandit
   passed.
+- Milestone 3 correction-child replacement increment: 105 automated tests
+  passed; migration `knowledge_base.0004` applied; Django checks, migration
+  consistency, Ruff, mypy, and Bandit passed.
 - Retrieval, embeddings, image analysis, cloud providers, and industrial
   integrations remain unimplemented.
