@@ -15,6 +15,7 @@ from apps.knowledge_base.bulk_review import (
     chunk_export_row,
     export_review_workbook,
     load_review_rows,
+    report_digest,
     resolve_reviewer,
     validate_review_rows,
 )
@@ -154,6 +155,16 @@ def split_payload(chunk: DocumentChunk, count: int) -> dict:
     }
 
 
+def update_xlsx_row(path: Path, row_number: int = 2, **changes) -> None:
+    workbook = load_workbook(path)
+    sheet = workbook.active
+    columns = {cell.value: index for index, cell in enumerate(sheet[1], start=1)}
+    for field, value in changes.items():
+        sheet.cell(row=row_number, column=columns[field], value=value)
+    workbook.save(path)
+    workbook.close()
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("suffix", [".xlsx", ".csv", ".json"])
 def test_export_and_load_supported_formats(
@@ -173,6 +184,103 @@ def test_export_and_load_supported_formats(
         workbook = load_workbook(path, read_only=True)
         assert tuple(cell.value for cell in workbook.active[1]) == REVIEW_COLUMNS
         workbook.close()
+
+
+@pytest.mark.django_db
+def test_untouched_xlsx_no_change_round_trip_is_valid(
+    tmp_path: Path,
+    bulk_chunks: list[DocumentChunk],
+) -> None:
+    path = tmp_path / "untouched.xlsx"
+    export_review_workbook("BULK-TEST-001", path)
+
+    plans = validate_review_rows(load_review_rows(path))
+
+    assert all(not plan.errors for plan in plans)
+    assert all(plan.row.proposed_action == "NO_CHANGE" for plan in plans)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("line_ending", "ending_name"),
+    [("\r\n", "crlf"), ("\r", "cr")],
+)
+@pytest.mark.parametrize("action", ["NO_CHANGE", "APPROVE"])
+def test_excel_line_ending_round_trip_is_comparison_equivalent(
+    tmp_path: Path,
+    bulk_chunks: list[DocumentChunk],
+    line_ending: str,
+    ending_name: str,
+    action: str,
+) -> None:
+    path = tmp_path / f"round-trip-{action}-{ending_name}.xlsx"
+    export_review_workbook("BULK-TEST-001", path)
+    source = bulk_chunks[1]
+    update_xlsx_row(
+        path,
+        row_number=3,
+        content=source.content.replace("\n", line_ending),
+        proposed_action=action,
+        reviewer_notes=("Reviewed after Excel save." if action == "APPROVE" else ""),
+    )
+
+    plan = validate_review_rows(load_review_rows(path))[1]
+
+    assert not plan.errors
+    assert plan.row.source_content_hash == source.content_hash
+
+
+@pytest.mark.django_db
+def test_excel_resave_changes_digest_and_requires_new_dry_run(
+    tmp_path: Path,
+    bulk_chunks: list[DocumentChunk],
+) -> None:
+    path = tmp_path / "digest.xlsx"
+    export_review_workbook("BULK-TEST-001", path)
+    before = report_digest(path)
+    source = bulk_chunks[1]
+
+    update_xlsx_row(
+        path,
+        row_number=3,
+        content=source.content.replace("\n", "\r\n"),
+    )
+
+    assert report_digest(path) != before
+    assert not validate_review_rows(load_review_rows(path))[1].errors
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "changed_content",
+    [
+        "2 OPERATION\n\n2.1 START\n\nConfirm interlocks are functional.",
+        "2 OPERATION\n\n2.1 START\n\nConfirm  safeguards are functional.",
+        "2 OPERATION\n\n2.1 START\n\nConfirm safeguards are functional!",
+        " 2 OPERATION\n\n2.1 START\n\nConfirm safeguards are functional.",
+        "2 OPERATION\n\n2.1 START\n\nConfirm safeguards are functional. ",
+    ],
+)
+@pytest.mark.parametrize("action", ["NO_CHANGE", "APPROVE"])
+def test_substantive_xlsx_content_changes_are_rejected(
+    tmp_path: Path,
+    bulk_chunks: list[DocumentChunk],
+    changed_content: str,
+    action: str,
+) -> None:
+    path = tmp_path / "edited.xlsx"
+    export_review_workbook("BULK-TEST-001", path)
+    update_xlsx_row(
+        path,
+        row_number=3,
+        content=changed_content,
+        proposed_action=action,
+        reviewer_notes="Review note." if action == "APPROVE" else "",
+    )
+
+    plan = validate_review_rows(load_review_rows(path))[1]
+
+    assert "Exported chunk content must not be edited." in plan.errors
 
 
 @pytest.mark.django_db
