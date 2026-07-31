@@ -167,3 +167,31 @@ This log records accepted decisions. New or changed decisions receive a new ADR;
   digest-bound dry-run report or explicit confirmation. Any invalid row blocks
   the batch. Metadata changes receive their own audit record; split changes use
   the existing correction service. No AI generates review decisions.
+
+## ADR-020 — Correction children are replaced, never edited
+
+- Status: Accepted
+- Date: 2026-07-31
+- Decision: Correct incomplete content in a correction child by superseding it
+  and creating one deterministic replacement child. Preserve the original
+  content, hash, split parent and provenance permanently.
+- Rationale: Direct edits would destroy reviewed evidence and make split
+  correction reapplication non-reproducible.
+- Consequences: Replacement requires an exact source hash, reviewer, reason,
+  notes, and safety confirmation where applicable. Reprocessing reapplies the
+  recipe only after the source split child is reconstructed exactly; otherwise
+  it becomes stale and fails closed.
+
+## ADR-021 — Accept trailing whitespace; defer correction portability
+
+- Status: Accepted
+- Date: 2026-07-31
+- Decision: Accept trailing whitespace after the required final sentence of
+  `CHK-R-dc0bd8a616b4bf71705f8eb93f535f` as non-substantive. Validate the
+  sentence with `rstrip()` or equivalent without modifying stored content.
+- Decision: Keep reviewed correction recipes database-resident for Milestone 3.
+  A fresh database created from committed files does not recreate the reviewed
+  correction dataset.
+- Consequences: A future milestone must define a versioned correction manifest
+  or controlled dataset-reconstruction mechanism before corrected datasets can
+  be reproduced across computers or deployment environments.

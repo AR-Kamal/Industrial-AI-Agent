@@ -205,6 +205,10 @@ Acceptance:
   Original children remain auditable and superseded; deterministic replacement
   children, reviewer audits, source-hash validation, and fail-closed
   reprocessing are implemented. Direct content editing remains prohibited.
+- 2026-07-31: Accepted the terminal LF on replacement
+  `CHK-R-dc0bd8a616b4bf71705f8eb93f535f` as non-substantive using `rstrip()`-style
+  ending validation. Recorded that correction recipes remain local-database
+  state and require a future versioned reconstruction mechanism for portability.
 
 ## Completion evidence
 

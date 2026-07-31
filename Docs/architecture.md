@@ -384,6 +384,31 @@ whole batch back. Metadata corrections preserve content and provenance in
 `ChunkMetadataCorrection`; split actions continue through
 `ChunkSplitCorrection`.
 
+### Correction-child replacement
+
+An approved correction child with incomplete text can be replaced through
+`knowledge_base.replacements`. The service never edits or deletes the reviewed
+child. It marks that child superseded and non-current, creates one deterministic
+`correction_replacement` child at the same sequence and provenance, and records
+both hashes, content, reason, reviewer and document identity in
+`ChunkReplacementCorrection`.
+
+Reprocessing first reconstructs split children, then reapplies replacement
+recipes in creation order. An exact child ID and source-hash match recreates the
+same replacement ID. A mismatch marks the audit stale and leaves the
+replacement retrieval-disabled.
+
+The accepted FANUC replacement may end with trailing whitespace after its
+required final sentence. Review validation treats only that trailing whitespace
+as non-substantive by applying `rstrip()` (or equivalent) before the final
+sentence comparison. Stored content is not rewritten for this purpose.
+
+Correction recipes and their reviewed content are currently database-resident.
+Migrations reproduce the schema, not the reviewed dataset, and runtime
+databases and correction files are intentionally excluded from Git. Recreating
+the same corrected dataset on another computer will require a future versioned
+correction manifest or controlled dataset-reconstruction mechanism.
+
 ## 11. Proposed initial dependencies
 
 Exact versions must be resolved and pinned at implementation time against a selected supported Python version; dependencies are not installed now.

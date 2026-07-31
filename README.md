@@ -339,3 +339,20 @@ The command preserves and supersedes the old child, disables its retrieval,
 creates one approved `CHK-R-...` replacement, and records the audit under
 **Chunk replacement corrections**. It rejects generated, stale, unchanged,
 empty, out-of-range, unauthorized, or insufficiently reviewed replacements.
+
+For the accepted FANUC replacement
+`CHK-R-dc0bd8a616b4bf71705f8eb93f535f`, the terminal line feed is treated as
+non-substantive formatting. Validation of its required final sentence uses
+trailing-whitespace normalization, equivalent to:
+
+```python
+content.rstrip().endswith(
+    "for your application and robot installation."
+)
+```
+
+Reviewed split, metadata, and replacement recipes currently reside in the
+local database. They are not recreated in a fresh database from committed
+repository files alone. A versioned correction manifest or another controlled
+dataset-reconstruction mechanism is a future requirement; it is not
+implemented in Milestone 3.
