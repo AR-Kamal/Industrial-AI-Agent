@@ -356,3 +356,65 @@ local database. They are not recreated in a fresh database from committed
 repository files alone. A versioned correction manifest or another controlled
 dataset-reconstruction mechanism is a future requirement; it is not
 implemented in Milestone 3.
+
+### Local embeddings and retrieval
+
+Set `EMBEDDING_MODEL` to an embedding model already installed in Ollama. The
+application never pulls a model automatically. Then use:
+
+```powershell
+python manage.py check_embedding_provider
+python manage.py build_vector_index --document FANUC-B-80687EN-12 --dry-run
+python manage.py build_vector_index --document FANUC-B-80687EN-12
+python manage.py check_vector_index
+python manage.py show_vector_index
+python manage.py search_knowledge "Who may enter the safety fence?" --top-k 5
+```
+
+Qdrant runs embedded and persists beneath `var/vector_store/`. Indexes are
+versioned and activated only after validation; vectors and generated reports
+are runtime artifacts and must not be committed. The staff-only inspector is
+available at `/staff/retrieval/`.
+
+`RETRIEVAL_MIN_SCORE` is intentionally blank until an embedding-model-specific
+threshold is calibrated using human-approved evaluation cases. Candidate cases
+in `tests/fixtures/fanuc_retrieval_evaluation.json` are `pending_review`, so
+formal Milestone 4 acceptance cannot yet be claimed. This milestone returns
+ranked source chunks only and does not generate chatbot answers.
+
+Validate the dataset without retrieval or report writes:
+
+```powershell
+python manage.py evaluate_retrieval `
+  --dataset tests\fixtures\fanuc_retrieval_evaluation.json `
+  --dry-run
+```
+
+After a human reviewer changes individual cases to `approved` and supplies
+accepted source locators, run formal retrieval evaluation:
+
+```powershell
+python manage.py evaluate_retrieval `
+  --dataset tests\fixtures\fanuc_retrieval_evaluation.json `
+  --document FANUC-B-80687EN-12 `
+  --retrieval-mode safety_first `
+  --top-k 5 `
+  --threshold 0.40 `
+  --approved-only `
+  --output fanuc-safety-first.json
+```
+
+Compare candidate thresholds without selecting one automatically:
+
+```powershell
+python manage.py evaluate_retrieval `
+  --dataset tests\fixtures\fanuc_retrieval_evaluation.json `
+  --retrieval-mode dense `
+  --calibration-thresholds 0.25,0.30,0.35,0.40,0.45 `
+  --approved-only
+```
+
+JSON and Markdown reports are written beneath Git-ignored
+`var/evaluation/`. Pending and invalid cases are reported separately and are
+never included in formal metrics. Threshold comparisons are model- and
+index-specific and do not modify `RETRIEVAL_MIN_SCORE`.
