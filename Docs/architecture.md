@@ -447,3 +447,45 @@ HTMX and Bootstrap should be vendored as static assets for offline/no-cost local
 | `bandit` | focused Python security checks |
 
 No RAG orchestration framework is proposed initially; direct services reduce dependency weight and keep retrieval/provider behavior testable. Add one only through an ADR demonstrating a concrete need.
+
+## Milestone 4 retrieval implementation
+
+The embedding interface and Ollama adapter are separate from text generation.
+Reviewed chunk content is never changed: indexing normalizes only line endings,
+outer whitespace, and repeated blank lines, then records both the authoritative
+source hash and normalized embedding-input hash.
+
+One centralized eligibility queryset gates indexing, consistency checks, and
+retrieval revalidation. Qdrant Local Mode stores disposable vectors beneath
+`var/vector_store/`; Django stores index lifecycle, model identity, dimension,
+corpus fingerprint, point identity, and provenance. A build creates a new
+collection, embeds the complete eligible corpus, validates counts, writes
+records, and only then atomically retires the previous index and activates the
+new one. A failure leaves the previous active index intact.
+
+Dense retrieval embeds the query, searches the active collection, then
+revalidates every candidate's current eligibility and source hash in Django.
+Safety-first mode deterministically prioritizes validated warning/caution
+chunks only through a bounded ranking bonus after semantic-score filtering;
+it never prepends safety-labelled content ahead of substantially more relevant
+evidence. Results expose semantic score, final ranking score, applied safety
+bonus, and ranking reason. A configured, model-specific minimum score permits abstention. Hybrid
+retrieval and LLM reranking are not enabled because no approved evaluation
+evidence currently justifies them.
+
+The staff inspection page and management commands return ranked source chunks
+and provenance only. Milestone 4 does not generate chatbot answers; grounded
+answer generation belongs to Milestone 5. Reviewed correction recipes remain
+database-resident and cannot yet be reconstructed from committed files alone;
+this milestone does not solve that portability gap.
+
+`knowledge_base.evaluation` validates the version-controlled JSON case schema
+and invokes the same retrieval service used by search and staff inspection.
+Only case-level `approved` records contribute to Hit@K, MRR, subset,
+abstention, latency, or provenance metrics; `pending_review` and invalid cases
+remain separately visible. Optional threshold calibration reruns approved
+cases at each displayed candidate threshold and reports positive/negative
+trade-offs without choosing or applying a production threshold. Detailed JSON
+and concise Markdown reports carry the dataset digest, active index/model
+identity, retrieval configuration, case outcomes, and aggregates under
+Git-ignored `var/evaluation/`.

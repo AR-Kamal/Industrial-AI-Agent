@@ -195,3 +195,19 @@ This log records accepted decisions. New or changed decisions receive a new ADR;
 - Consequences: A future milestone must define a versioned correction manifest
   or controlled dataset-reconstruction mechanism before corrected datasets can
   be reproduced across computers or deployment environments.
+
+## ADR-022 — Qdrant Local Mode and versioned retrieval indexes
+
+- Status: Accepted
+- Date: 2026-07-31
+- Decision: Supersede ADR-004's proposed Chroma backend with pinned
+  `qdrant-client` Local Mode. Django remains authoritative; each immutable
+  collection has a `VectorIndexVersion`, per-chunk hash records, and is exposed
+  only after count validation and atomic activation.
+- Rationale: The approved Milestone 4 brief requires Qdrant Local Mode and
+  provider-neutral adapters. Versioned collections allow failed builds and
+  model/corpus changes without replacing the last valid active index.
+- Consequences: Runtime collections live under Git-ignored
+  `var/vector_store/`. Retrieval revalidates eligibility and source hashes in
+  Django. Thresholds are embedding-model-specific and remain provisional until
+  the candidate evaluation cases receive human approval.

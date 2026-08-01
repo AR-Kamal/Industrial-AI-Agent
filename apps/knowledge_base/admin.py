@@ -28,6 +28,7 @@ from .forms import (
 )
 from .ingestion import process_document
 from .models import (
+    ChunkEmbeddingRecord,
     ChunkMetadataCorrection,
     ChunkReplacementCorrection,
     ChunkSplitCorrection,
@@ -35,6 +36,7 @@ from .models import (
     DocumentVersion,
     IngestionJob,
     KnowledgeDocument,
+    VectorIndexVersion,
 )
 from .validation import validate_uploaded_document
 
@@ -874,3 +876,44 @@ class IngestionJobAdmin(admin.ModelAdmin):
         "completed_at",
         "created_at",
     )
+
+
+@admin.register(VectorIndexVersion)
+class VectorIndexVersionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "status",
+        "model_identity",
+        "vector_dimension",
+        "indexed_chunk_count",
+        "created_at",
+    )
+    readonly_fields = [field.name for field in VectorIndexVersion._meta.fields]
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: VectorIndexVersion | None = None
+    ) -> bool:
+        return False
+
+
+@admin.register(ChunkEmbeddingRecord)
+class ChunkEmbeddingRecordAdmin(admin.ModelAdmin):
+    list_display = (
+        "chunk",
+        "index_version",
+        "vector_point_id",
+        "model_identity",
+        "created_at",
+    )
+    readonly_fields = [field.name for field in ChunkEmbeddingRecord._meta.fields]
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: ChunkEmbeddingRecord | None = None
+    ) -> bool:
+        return False

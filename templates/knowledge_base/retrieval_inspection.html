@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Retrieval inspection{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1>Retrieval inspection</h1>
+  <p class="text-muted">Staff-only ranked source inspection. No LLM answer is generated.</p>
+  <form method="get" class="row g-3 mb-4">
+    {% for field in form %}
+      <div class="col-md-6">{{ field.label_tag }} {{ field }} {{ field.errors }}</div>
+    {% endfor %}
+    <div><button class="btn btn-primary" type="submit">Search</button></div>
+  </form>
+  {% if error %}<div class="alert alert-warning">{{ error }}</div>{% endif %}
+  {% for result in results %}
+    <article class="card mb-3">
+      <div class="card-header">#{{ result.rank }} — semantic {{ result.semantic_score|floatformat:4 }} — ranking {{ result.ranking_score|floatformat:4 }} — {{ result.retrieval_mode }}</div>
+      <div class="card-body">
+        <dl class="row">
+          <dt class="col-sm-3">Chunk</dt><dd class="col-sm-9">{{ result.chunk_id }}</dd>
+          <dt class="col-sm-3">Document/version</dt><dd class="col-sm-9">{{ result.document_id }} / {{ result.document_version_id }}</dd>
+          <dt class="col-sm-3">Chapter/section</dt><dd class="col-sm-9">{{ result.chapter }} / {{ result.section }}</dd>
+          <dt class="col-sm-3">Pages</dt><dd class="col-sm-9">{{ result.page_start }}–{{ result.page_end }}</dd>
+          <dt class="col-sm-3">Warnings</dt><dd class="col-sm-9">warning={{ result.contains_warning }}, caution={{ result.contains_caution }}</dd>
+          <dt class="col-sm-3">Ranking reason</dt><dd class="col-sm-9">{{ result.ranking_reason }} (safety bonus {{ result.safety_priority_applied|floatformat:4 }})</dd>
+          <dt class="col-sm-3">Source hash</dt><dd class="col-sm-9">{{ result.source_content_hash }}</dd>
+          <dt class="col-sm-3">Index</dt><dd class="col-sm-9">{{ result.index_version_id }}</dd>
+        </dl>
+        <pre class="text-wrap">{{ result.content }}</pre>
+      </div>
+    </article>
+  {% empty %}
+    {% if form.is_bound and not error %}<p>No sufficiently relevant approved source was found.</p>{% endif %}
+  {% endfor %}
+</div>
+{% endblock %}

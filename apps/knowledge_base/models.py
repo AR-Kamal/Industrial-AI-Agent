@@ -432,3 +432,74 @@ class IngestionJob(models.Model):
 
     def __str__(self) -> str:
         return f"{self.job_type} {self.document_id} ({self.status})"
+
+
+class VectorIndexVersion(models.Model):
+    class Status(models.TextChoices):
+        BUILDING = "building", "Building"
+        VALIDATING = "validating", "Validating"
+        ACTIVE = "active", "Active"
+        FAILED = "failed", "Failed"
+        RETIRED = "retired", "Retired"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    collection_name = models.CharField(max_length=120, unique=True)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.BUILDING
+    )
+    provider = models.CharField(max_length=40)
+    model_name = models.CharField(max_length=200)
+    model_identity = models.CharField(max_length=300)
+    vector_dimension = models.PositiveIntegerField()
+    distance_metric = models.CharField(max_length=20, default="cosine")
+    normalization = models.CharField(max_length=100)
+    corpus_fingerprint = models.CharField(max_length=64, db_index=True)
+    configuration = models.JSONField(default=dict)
+    eligible_chunk_count = models.PositiveIntegerField(default=0)
+    indexed_chunk_count = models.PositiveIntegerField(default=0)
+    failure_detail = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    activated_at = models.DateTimeField(null=True, blank=True)
+    retired_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["status"],
+                condition=models.Q(status="active"),
+                name="one_active_vector_index",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.collection_name} ({self.status})"
+
+
+class ChunkEmbeddingRecord(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    index_version = models.ForeignKey(
+        VectorIndexVersion, on_delete=models.PROTECT, related_name="embedding_records"
+    )
+    chunk = models.ForeignKey(
+        DocumentChunk, on_delete=models.PROTECT, related_name="embedding_records"
+    )
+    vector_point_id = models.UUIDField()
+    source_content_hash = models.CharField(max_length=64)
+    embedding_input_hash = models.CharField(max_length=64)
+    model_identity = models.CharField(max_length=300)
+    vector_dimension = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["index_version", "chunk"], name="unique_chunk_per_vector_index"
+            ),
+            models.UniqueConstraint(
+                fields=["index_version", "vector_point_id"],
+                name="unique_point_per_vector_index",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.chunk_id} in {self.index_version_id}"

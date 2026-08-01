@@ -233,3 +233,10 @@ Acceptance:
   consistency, Ruff, mypy, and Bandit passed.
 - Retrieval, embeddings, image analysis, cloud providers, and industrial
   integrations remain unimplemented.
+- 2026-07-31: Owner authorized a retrieval-only Milestone 4 that supersedes the
+  earlier milestone numbering for grounded answers. Added local Ollama
+  embeddings, Qdrant Local Mode, versioned build/validation/activation,
+  centralized eligibility, Django-side retrieval revalidation, abstention
+  configuration, staff inspection, and pending-review evaluation candidates.
+  Chatbot answer generation remains deferred to Milestone 5 under this
+  authorized sequence.
