@@ -211,3 +211,20 @@ This log records accepted decisions. New or changed decisions receive a new ADR;
   `var/vector_store/`. Retrieval revalidates eligibility and source hashes in
   Django. Thresholds are embedding-model-specific and remain provisional until
   the candidate evaluation cases receive human approval.
+
+## ADR-023 — Structured grounded generation with application-owned citations
+
+- Status: Accepted
+- Date: 2026-08-01
+- Decision: Reuse the provider-neutral text gateway and Ollama adapter for
+  schema-constrained, non-streaming generation. The application assigns
+  temporary evidence labels, validates the model's selected labels, and builds
+  citations exclusively from revalidated retrieval records.
+- Rationale: Model-created source metadata is untrusted. Separating semantic
+  answer generation from deterministic provenance prevents fabricated chunks,
+  pages, hashes, and index identities from reaching users.
+- Consequences: No qualifying evidence means Gemma is not called. Invalid
+  structured output receives at most one retry, then fails closed. Prompt text
+  and evidence content are not persisted; compact answer/citation diagnostics
+  are retained for local review. Vision and troubleshooting-state work remain
+  excluded.

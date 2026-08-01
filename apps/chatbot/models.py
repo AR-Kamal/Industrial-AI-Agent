@@ -29,6 +29,7 @@ class Message(models.Model):
         COMPLETE = "complete", "Complete"
         BLOCKED = "blocked", "Blocked by safety controls"
         ERROR = "error", "Provider error"
+        ABSTAINED = "abstained", "Insufficient approved evidence"
 
     conversation = models.ForeignKey(
         Conversation,
@@ -45,6 +46,11 @@ class Message(models.Model):
     provider = models.CharField(max_length=50, blank=True)
     model_name = models.CharField(max_length=100, blank=True)
     error_code = models.CharField(max_length=50, blank=True)
+    answer_status = models.CharField(max_length=40, blank=True)
+    citations = models.JSONField(default=list, blank=True)
+    safety_related = models.BooleanField(default=False)
+    index_version_id = models.CharField(max_length=64, blank=True)
+    generation_diagnostics = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

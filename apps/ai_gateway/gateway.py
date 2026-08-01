@@ -1,6 +1,7 @@
 """Application-facing text gateway."""
 
 from collections.abc import Sequence
+from typing import Any
 
 from .config import get_llm_config
 from .factory import get_llm_provider
@@ -28,8 +29,23 @@ class TextGateway:
         )
         return self.provider.generate(request)
 
+    def generate_structured(
+        self, messages: Sequence[ChatMessage], schema: dict[str, Any]
+    ) -> TextGenerationResult:
+        """Generate one non-streaming response constrained by a JSON schema."""
+        request = TextGenerationRequest(
+            messages=tuple(messages),
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens,
+            response_schema=schema if self.config.structured_output else None,
+        )
+        return self.provider.generate(request)
+
     def health_check(self) -> ProviderHealth:
         return self.provider.health_check()
+
+    def get_model_identity(self) -> str:
+        return self.provider.get_model_identity()
 
 
 def get_text_gateway() -> TextGateway:

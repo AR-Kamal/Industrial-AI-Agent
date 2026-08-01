@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 
 @dataclass(frozen=True)
@@ -16,6 +16,7 @@ class TextGenerationRequest:
     messages: tuple[ChatMessage, ...]
     temperature: float
     max_tokens: int
+    response_schema: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,7 @@ class TextGenerationResult:
     text: str
     provider: str
     model: str
+    duration_ms: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -41,6 +43,11 @@ class LLMProvider(Protocol):
 
     def health_check(self) -> ProviderHealth:
         """Verify that the provider and configured model are available."""
+
+        ...
+
+    def get_model_identity(self) -> str:
+        """Return the configured provider/model identity without a network call."""
 
         ...
 

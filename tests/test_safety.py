@@ -26,5 +26,5 @@ def test_system_prompt_requires_insufficient_evidence_handling() -> None:
     prompt = " ".join(MANUFACTURING_ASSISTANT_SYSTEM_PROMPT.lower().split())
 
     assert "ask for missing evidence instead of guessing" in prompt
-    assert "not yet grounded in approved project documents" in prompt
+    assert "grounded chat uses its own stricter evidence-only prompt" in prompt
     assert "do not claim to observe or know the live machine condition" in prompt

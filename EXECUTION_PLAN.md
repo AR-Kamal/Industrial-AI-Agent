@@ -240,3 +240,10 @@ Acceptance:
   configuration, staff inspection, and pending-review evaluation candidates.
   Chatbot answer generation remains deferred to Milestone 5 under this
   authorized sequence.
+- 2026-08-01: Owner authorized text-only grounded RAG answer generation as
+  Milestone 5 under the revised sequence. Work reuses the Milestone 2 text
+  gateway and Milestone 4 safety-first retrieval, adds strict structured
+  response validation, application-owned citations, deterministic abstention,
+  staff diagnostics, and pending human-review answer candidates. Image,
+  vision, OCR, industrial integration, deployment, and Milestone 6 remain out
+  of scope.

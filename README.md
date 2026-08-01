@@ -418,3 +418,30 @@ JSON and Markdown reports are written beneath Git-ignored
 `var/evaluation/`. Pending and invalid cases are reported separately and are
 never included in formal metrics. Threshold comparisons are model- and
 index-specific and do not modify `RETRIEVAL_MIN_SCORE`.
+# Grounded text answers (Milestone 5)
+
+The chat interface now retrieves approved FANUC evidence before calling the
+configured local text model. Embeddings (`EMBEDDING_MODEL`) and text generation
+(`LLM_TEXT_MODEL`) are separate configurations. With the reviewed FANUC corpus
+and `qwen3-embedding:0.6b`, use `RETRIEVAL_MIN_SCORE=0.30`; that threshold is
+model/index-specific.
+
+Answers use strict structured output. Evidence labels are temporary and are
+validated by Django; visible citation cards are built from retrieval metadata,
+not model-produced source strings. No qualifying evidence skips generation and
+returns a controlled abstention. Malformed model output receives one retry and
+then fails closed. Warning/caution evidence forces a visible safety notice.
+Staff accounts may inspect scores, hashes, index identity, latency, prompt
+size, and retries; normal users cannot see those diagnostics.
+
+Useful commands:
+
+```powershell
+python manage.py check_generation_provider
+python manage.py answer_knowledge "What is the maximum speed in T1 mode?" --document FANUC-B-80687EN-12 --top-k 5 --threshold 0.30 --show-diagnostics
+python manage.py evaluate_grounded_answers --dataset tests\fixtures\fanuc_grounded_answer_candidates.json --dry-run
+```
+
+The candidate dataset is pending human review and is not a formal answer-quality
+acceptance result. Image input, vision, OCR, machine connectivity, web search,
+and deployment remain excluded.

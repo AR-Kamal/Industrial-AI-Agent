@@ -1,6 +1,7 @@
 """Ollama adapter for its local OpenAI-compatible API."""
 
 from collections.abc import Mapping
+from time import perf_counter
 from typing import Any
 
 import httpx
@@ -45,6 +46,16 @@ class OllamaProvider(LLMProvider):
             "max_tokens": request.max_tokens,
             "stream": False,
         }
+        if request.response_schema is not None:
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "grounded_answer",
+                    "strict": True,
+                    "schema": request.response_schema,
+                },
+            }
+        started = perf_counter()
         response = self._request("POST", "/chat/completions", json=payload)
         data = self._response_json(response)
         text = self._extract_text(data)
@@ -52,7 +63,11 @@ class OllamaProvider(LLMProvider):
             text=text,
             provider=self.config.provider,
             model=self.config.text_model,
+            duration_ms=(perf_counter() - started) * 1000,
         )
+
+    def get_model_identity(self) -> str:
+        return f"{self.config.provider}:{self.config.text_model}"
 
     def health_check(self) -> ProviderHealth:
         response = self._request("GET", "/models")

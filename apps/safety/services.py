@@ -25,10 +25,10 @@ class SafetyControl(Protocol):
 
 
 PROHIBITED_SYSTEMS = (
-    r"emergency\s+stop|e-?stop|guard|interlock|safety\s+relay|"
+    r"emergency\s+stop|e-?stop|safety\s+fence|guard|interlock|safety\s+relay|"
     r"lockout|tagout|loto|safety\s+system"
 )
-PROHIBITED_ACTIONS = r"bypass|defeat|bridge|override|disable|remove|short"
+PROHIBITED_ACTIONS = r"bypass|defeat|bridge|override|disable|disabled|remove|short"
 
 UNSAFE_REQUEST_PATTERNS = (
     re.compile(

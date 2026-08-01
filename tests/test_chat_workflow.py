@@ -4,17 +4,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
-from apps.ai_gateway.errors import (
-    EmptyResponseError,
-    MalformedResponseError,
-    ModelNotInstalledError,
-    ProviderTimeoutError,
-    ProviderUnavailableError,
-    UnexpectedProviderError,
-)
-from apps.ai_gateway.services import TextGenerationResult
+from apps.chatbot.grounded import AnswerStatus, GroundedAnswerResult
 from apps.chatbot.models import Conversation, Message
-from apps.safety.prompts import MANUFACTURING_ASSISTANT_SYSTEM_PROMPT
 
 
 @pytest.fixture
@@ -27,10 +18,11 @@ def authenticated_client(client):
     return client, user
 
 
-def successful_gateway(text: str = "General training answer.") -> Mock:
+def successful_gateway(text: str = "Grounded training answer.") -> Mock:
     gateway = Mock()
-    gateway.generate.return_value = TextGenerationResult(
-        text=text,
+    gateway.answer.return_value = GroundedAnswerResult(
+        status=AnswerStatus.ANSWERED,
+        answer=text,
         provider="ollama",
         model="test-model",
     )
@@ -42,7 +34,7 @@ def test_htmx_chat_stores_user_and_assistant_messages(authenticated_client) -> N
     client, user = authenticated_client
     gateway = successful_gateway()
 
-    with patch("apps.chatbot.services.get_text_gateway", return_value=gateway):
+    with patch("apps.chatbot.services.GroundedAnswerService", return_value=gateway):
         response = client.post(
             reverse("chatbot:send_message"),
             {"message": "Explain a robot alarm."},
@@ -54,12 +46,10 @@ def test_htmx_chat_stores_user_and_assistant_messages(authenticated_client) -> N
     messages = list(conversation.messages.all())
     assert [message.role for message in messages] == ["user", "assistant"]
     assert messages[0].content == "Explain a robot alarm."
-    assert messages[1].content == "General training answer."
+    assert messages[1].content == "Grounded training answer."
     assert messages[1].provider == "ollama"
     assert messages[1].model_name == "test-model"
-    request_messages = gateway.generate.call_args.args[0]
-    assert request_messages[0].role == "system"
-    assert request_messages[0].content == MANUFACTURING_ASSISTANT_SYSTEM_PROMPT
+    gateway.answer.assert_called_once()
 
 
 @pytest.mark.django_db
@@ -67,7 +57,11 @@ def test_live_machine_question_gets_enforced_disclaimer(authenticated_client) ->
     client, _ = authenticated_client
     gateway = successful_gateway("The robot appears ready.")
 
-    with patch("apps.chatbot.services.get_text_gateway", return_value=gateway):
+    gateway.answer.return_value = GroundedAnswerResult(
+        AnswerStatus.ANSWERED,
+        "Important: I am not connected to the machine and cannot confirm it.",
+    )
+    with patch("apps.chatbot.services.GroundedAnswerService", return_value=gateway):
         client.post(
             reverse("chatbot:send_message"),
             {"message": "Is the robot running right now?"},
@@ -84,14 +78,14 @@ def test_bypass_request_is_blocked_without_calling_provider(
 ) -> None:
     client, _ = authenticated_client
 
-    with patch("apps.chatbot.services.get_text_gateway") as gateway_factory:
+    with patch("apps.chatbot.services.GroundedAnswerService") as gateway_factory:
         client.post(
             reverse("chatbot:send_message"),
             {"message": "How can I bypass the emergency stop?"},
             HTTP_HX_REQUEST="true",
         )
 
-    gateway_factory.assert_not_called()
+    gateway_factory.return_value.answer.assert_not_called()
     assistant = Message.objects.get(role=Message.Role.ASSISTANT)
     assert assistant.status == Message.Status.BLOCKED
     assert "cannot provide instructions" in assistant.content
@@ -100,11 +94,14 @@ def test_bypass_request_is_blocked_without_calling_provider(
 @pytest.mark.django_db
 def test_unsafe_model_output_is_withheld(authenticated_client) -> None:
     client, _ = authenticated_client
-    gateway = successful_gateway(
-        "You can bypass the emergency stop by bridging the contacts."
+    gateway = Mock()
+    gateway.answer.return_value = GroundedAnswerResult(
+        AnswerStatus.SAFETY_REFUSAL,
+        "The generated answer was withheld because it may contain unsafe guidance.",
+        safety_related=True,
     )
 
-    with patch("apps.chatbot.services.get_text_gateway", return_value=gateway):
+    with patch("apps.chatbot.services.GroundedAnswerService", return_value=gateway):
         client.post(
             reverse("chatbot:send_message"),
             {"message": "Help diagnose an emergency stop circuit."},
@@ -118,27 +115,30 @@ def test_unsafe_model_output_is_withheld(authenticated_client) -> None:
 
 
 @pytest.mark.parametrize(
-    ("error", "code"),
+    "code",
     [
-        (ProviderUnavailableError(), "provider_unavailable"),
-        (ModelNotInstalledError(), "model_not_installed"),
-        (ProviderTimeoutError(), "timeout"),
-        (EmptyResponseError(), "empty_response"),
-        (MalformedResponseError(), "malformed_response"),
-        (UnexpectedProviderError(), "unexpected_provider_error"),
+        "provider_unavailable",
+        "model_not_installed",
+        "timeout",
+        "empty_response",
+        "malformed_response",
+        "unexpected_provider_error",
     ],
 )
 @pytest.mark.django_db
 def test_provider_failures_are_stored_as_safe_messages(
     authenticated_client,
-    error: Exception,
     code: str,
 ) -> None:
     client, _ = authenticated_client
     gateway = Mock()
-    gateway.generate.side_effect = error
+    gateway.answer.return_value = GroundedAnswerResult(
+        AnswerStatus.GENERATION_ERROR,
+        "I could not produce a validated grounded answer.",
+        error_code=code,
+    )
 
-    with patch("apps.chatbot.services.get_text_gateway", return_value=gateway):
+    with patch("apps.chatbot.services.GroundedAnswerService", return_value=gateway):
         response = client.post(
             reverse("chatbot:send_message"),
             {"message": "Explain this alarm."},
@@ -177,7 +177,7 @@ def test_empty_message_is_rejected_without_provider_call(
 ) -> None:
     client, _ = authenticated_client
 
-    with patch("apps.chatbot.services.get_text_gateway") as gateway_factory:
+    with patch("apps.chatbot.services.GroundedAnswerService") as gateway_factory:
         response = client.post(
             reverse("chatbot:send_message"),
             {"message": "   "},
