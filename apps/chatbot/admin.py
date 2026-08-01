@@ -6,7 +6,12 @@ from .models import Conversation, Message
 class MessageInline(admin.TabularInline):
     model = Message
     extra = 0
-    readonly_fields = ("created_at",)
+    readonly_fields = (
+        "created_at",
+        "answer_status",
+        "citations",
+        "generation_diagnostics",
+    )
 
 
 @admin.register(Conversation)
@@ -27,8 +32,24 @@ class MessageAdmin(admin.ModelAdmin):
         "status",
         "provider",
         "model_name",
+        "answer_status",
+        "safety_related",
         "created_at",
     )
-    list_filter = ("role", "status", "provider", "created_at")
+    list_filter = (
+        "role",
+        "status",
+        "answer_status",
+        "safety_related",
+        "provider",
+        "created_at",
+    )
     search_fields = ("content", "conversation__title", "conversation__user__username")
-    readonly_fields = ("created_at",)
+    readonly_fields = (
+        "created_at",
+        "answer_status",
+        "citations",
+        "safety_related",
+        "index_version_id",
+        "generation_diagnostics",
+    )

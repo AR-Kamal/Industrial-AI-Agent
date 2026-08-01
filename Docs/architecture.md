@@ -88,6 +88,26 @@ Safety is applied before and after generation. Citations originate from retrieve
 
 Retrieval parameters (chunking method, overlap, top-k, threshold, embedding model/version) are configuration recorded with each index build and test run.
 
+### Grounded text generation
+
+The chatbot calls the existing safety-first retrieval service with the active
+index, configured top-k, and threshold. Results are revalidated at the
+generation boundary, budgeted as complete chunks, and labeled `E1`, `E2`, and
+so on. The existing text gateway sends these blocks to Ollama using a strict
+JSON schema. Only validated evidence labels can become citations; document and
+index metadata always comes from Django retrieval records.
+
+Retrieval and generation fail closed independently. No qualifying evidence,
+an unavailable or incompatible index, an insufficient-evidence model response,
+or repeatedly malformed output produces a controlled response without raw
+provider details. The calibrated `0.30` threshold applies specifically to the
+reviewed `qwen3-embedding:0.6b` FANUC corpus and must be recalibrated if either
+the embedding identity or corpus changes.
+
+Normal users see answers, safety notices, and source cards. Only staff can see
+scores, chunk/hash/index identities, latency, prompt size, and retry counts.
+The application stores no hidden prompt or duplicate evidence content.
+
 ### Grounded answer shape
 
 The internal response contract should support:

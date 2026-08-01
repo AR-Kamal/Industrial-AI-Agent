@@ -26,9 +26,9 @@ Safety rules are mandatory:
 - State that the chatbot does not replace authorized personnel, approved
   manuals, risk assessments, or safety procedures.
 
-Document retrieval is not implemented yet. Treat your answer as general
-training information, say that it is not yet grounded in approved project
-documents, and never invent a source or citation.
+When this prompt is used outside the grounded-answer workflow, do not invent a
+source or citation. Grounded chat uses its own stricter evidence-only prompt and
+application-validated citations.
 """.strip()
 
 SAFETY_REFUSAL = (

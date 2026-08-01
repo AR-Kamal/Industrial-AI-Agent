@@ -5,4 +5,41 @@
     {% if message.role == "user" %}You{% else %}Manufacturing assistant{% endif %}
   </div>
   <div>{{ message.content|linebreaksbr }}</div>
+  {% if message.role == "assistant" and message.safety_related %}
+    <div class="alert alert-warning mt-2 mb-0" role="alert">
+      <strong>Safety-related information:</strong> Follow the approved manual and
+      site procedures. Do not bypass protective devices; use trained and authorized personnel.
+    </div>
+  {% endif %}
+  {% if message.role == "assistant" and message.citations %}
+    <section class="mt-3" aria-label="Sources">
+      <div class="small fw-semibold mb-2">Approved sources</div>
+      {% for citation in message.citations %}
+        <div class="card mb-2"><div class="card-body py-2">
+          <div>
+            <span class="badge text-bg-secondary">{{ citation.evidence_label }}</span>
+            {% if citation.contains_warning %}<span class="badge text-bg-danger">Warning</span>{% endif %}
+            {% if citation.contains_caution %}<span class="badge text-bg-warning">Caution</span>{% endif %}
+          </div>
+          <div class="small mt-1"><strong>{{ citation.document_id }}</strong></div>
+          <div class="small">Chapter {{ citation.chapter }} · {{ citation.section }}</div>
+          <div class="small">
+            Page{% if citation.page_start != citation.page_end %}s{% endif %}
+            {{ citation.page_start }}{% if citation.page_start != citation.page_end %}–{{ citation.page_end }}{% endif %}
+          </div>
+          {% if request.user.is_staff %}
+            <details class="small mt-1"><summary>Staff source diagnostics</summary>
+              Chunk {{ citation.chunk_id }} · index {{ citation.index_version_id }}<br>
+              Source hash {{ citation.source_content_hash }}
+            </details>
+          {% endif %}
+        </div></div>
+      {% endfor %}
+    </section>
+  {% endif %}
+  {% if request.user.is_staff and message.generation_diagnostics %}
+    <details class="small mt-2"><summary>Staff generation diagnostics</summary>
+      <pre class="text-wrap mb-0">{{ message.generation_diagnostics }}</pre>
+    </details>
+  {% endif %}
 </article>

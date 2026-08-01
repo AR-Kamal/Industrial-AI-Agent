@@ -19,6 +19,7 @@ class LLMConfig:
     timeout_seconds: float
     temperature: float
     max_tokens: int
+    structured_output: bool = False
 
 
 def get_llm_config() -> LLMConfig:
@@ -30,6 +31,7 @@ def get_llm_config() -> LLMConfig:
         timeout_seconds=float(settings.LLM_TIMEOUT_SECONDS),
         temperature=float(settings.LLM_TEMPERATURE),
         max_tokens=int(settings.LLM_MAX_TOKENS),
+        structured_output=bool(settings.LLM_STRUCTURED_OUTPUT),
     )
     _validate(config)
     return config
