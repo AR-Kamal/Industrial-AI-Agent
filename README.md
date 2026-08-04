@@ -103,13 +103,14 @@ python -m bandit -q -r apps manufacturing_agent
 | `DEBUG` | Use `True` only for local development |
 | `ALLOWED_HOSTS` | Comma-separated local hostnames |
 | `LOG_LEVEL` | Structured console logging threshold |
-| `LLM_PROVIDER` | Must be `ollama` in the local prototype |
+| `LLM_PROVIDER` | Explicit generation provider: `ollama` (default) or `gemini` |
 | `LLM_BASE_URL` | Local OpenAI-compatible URL; must be a loopback `/v1` URL |
 | `LLM_API_KEY` | Required placeholder; Ollama ignores it |
 | `LLM_TEXT_MODEL` | Exact installed Ollama text-model name |
 | `LLM_TIMEOUT_SECONDS` | Request timeout, greater than zero |
 | `LLM_TEMPERATURE` | Generation temperature from 0 through 2 |
 | `LLM_MAX_TOKENS` | Maximum generated tokens where Ollama supports it |
+| `GEMINI_API_KEY` | Environment-only credential required only for `gemini` |
 
 Example:
 
@@ -122,6 +123,33 @@ LLM_TIMEOUT_SECONDS=60
 LLM_TEMPERATURE=0.1
 LLM_MAX_TOKENS=800
 ```
+
+### Optional Gemini generation comparison
+
+Gemini changes generation only: local Ollama embeddings, Qdrant retrieval,
+the 0.30 evaluated threshold, grounded prompt, semantic validation, and
+application-owned citations remain authoritative. Obtain a key through your
+Google Gemini account, keep it out of Git, and select the provider explicitly:
+
+```powershell
+$env:GEMINI_API_KEY = "<user-provided-key>"
+$env:LLM_PROVIDER = "gemini"
+$env:LLM_TEXT_MODEL = "gemini-3.6-flash"
+$env:LLM_TIMEOUT_SECONDS = "90"
+$env:LLM_MAX_TOKENS = "700"
+python manage.py check_generation_provider
+```
+
+The adapter uses the official Google GenAI Interactions API, sends non-streaming
+requests with `store=False`, and enables no Google tools, web grounding, file
+search, URL context, code execution, or function calling. Only the current
+grounded prompt and selected evidence are sent to the cloud provider. Source
+files, source hashes, vector identifiers, API keys, and interaction IDs are not
+sent or persisted. Return to local generation by setting
+`LLM_PROVIDER=ollama` and `LLM_TEXT_MODEL=gemma3:4b`.
+
+Cloud-provider use requires a separate privacy and human answer-quality review.
+Structural evaluation metrics alone do not select the permanent provider.
 
 The Ollama adapter rejects non-loopback URLs. No credential or provider setting
 is rendered into HTML or JavaScript.

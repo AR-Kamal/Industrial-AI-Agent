@@ -125,6 +125,9 @@ class GenerationDiagnostics:
     semantic_scores: tuple[float, ...]
     ranking_scores: tuple[float, ...]
     retry_count: int
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
     validation_attempts: tuple[dict[str, Any], ...] = ()
 
 
@@ -342,6 +345,10 @@ class GroundedAnswerService:
         model_identity = gateway.get_model_identity()
         retry_count = 0
         generation_ms = 0.0
+        input_tokens = 0
+        output_tokens = 0
+        total_tokens = 0
+        has_usage = False
         validation_attempts: list[dict[str, Any]] = []
         try:
             while True:
@@ -349,6 +356,19 @@ class GroundedAnswerService:
                     messages, STRUCTURED_ANSWER_SCHEMA
                 )
                 generation_ms += generated.duration_ms
+                for value, name in (
+                    (generated.input_tokens, "input_tokens"),
+                    (generated.output_tokens, "output_tokens"),
+                    (generated.total_tokens, "total_tokens"),
+                ):
+                    if value is not None:
+                        has_usage = True
+                        if name == "input_tokens":
+                            input_tokens += value
+                        elif name == "output_tokens":
+                            output_tokens += value
+                        else:
+                            total_tokens += value
                 try:
                     payload = self._validate_payload(generated.text, evidence)
                     validation_attempts.append(
@@ -392,6 +412,9 @@ class GroundedAnswerService:
                     retry_count,
                     model_identity,
                     tuple(validation_attempts),
+                    input_tokens if has_usage else None,
+                    output_tokens if has_usage else None,
+                    total_tokens if has_usage else None,
                 ),
                 error_code=exc.code,
                 provider=model_identity.partition(":")[0],
@@ -407,6 +430,9 @@ class GroundedAnswerService:
             retry_count,
             model_identity,
             tuple(validation_attempts),
+            input_tokens if has_usage else None,
+            output_tokens if has_usage else None,
+            total_tokens if has_usage else None,
         )
         if payload["status"] == "insufficient_evidence":
             return GroundedAnswerResult(
@@ -613,6 +639,9 @@ class GroundedAnswerService:
         retries: int,
         model_identity: str = "",
         validation_attempts: tuple[dict[str, Any], ...] = (),
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        total_tokens: int | None = None,
     ) -> GenerationDiagnostics:
         return GenerationDiagnostics(
             model_identity=model_identity,
@@ -627,6 +656,9 @@ class GroundedAnswerService:
             semantic_scores=tuple(x.result.semantic_score for x in evidence),
             ranking_scores=tuple(x.result.ranking_score for x in evidence),
             retry_count=retries,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=total_tokens,
             validation_attempts=validation_attempts,
         )
 
