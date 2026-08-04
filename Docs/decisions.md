@@ -228,3 +228,16 @@ This log records accepted decisions. New or changed decisions receive a new ADR;
   and evidence content are not persisted; compact answer/citation diagnostics
   are retained for local review. Vision and troubleshooting-state work remain
   excluded.
+# ADR: Gemini is an explicit alternative generation adapter
+
+Date: 2026-08-03
+
+Milestone 5.1 extends the existing `TextGateway`; it does not introduce another
+RAG workflow. `LLM_PROVIDER=gemini` selects the official Google GenAI
+Interactions API and requires `GEMINI_API_KEY`. Ollama remains the default and
+there is no automatic fallback. Gemini calls are stateless (`store=False`),
+tool-free, and omit deprecated sampling parameters for Gemini 3.6 Flash.
+Provider JSON Schema provides basic shape constraints only; the existing
+application validator remains authoritative for evidence IDs, answer status,
+citations, and safety. This limits cloud disclosure and keeps comparison inputs
+identical, but cloud use still requires human privacy and quality review.

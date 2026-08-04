@@ -100,6 +100,15 @@ class Command(BaseCommand):
             )
             for case in approved
         ]
+        active_index_id = next(
+            (
+                citation["index_version_id"]
+                for outcome in outcomes
+                for citation in outcome["citations"]
+                if citation.get("index_version_id")
+            ),
+            "",
+        )
         timestamp = datetime.now(UTC).isoformat()
         report = {
             "timestamp": timestamp,
@@ -114,6 +123,9 @@ class Command(BaseCommand):
                 "threshold": threshold,
                 "top_k": top_k,
                 "generation_model": settings.LLM_TEXT_MODEL,
+                "generation_provider": settings.LLM_PROVIDER,
+                "embedding_model": settings.EMBEDDING_MODEL,
+                "active_index_id": active_index_id,
                 "approved_only": True,
             },
             "case_counts": counts,
@@ -136,9 +148,13 @@ class Command(BaseCommand):
         )
         markdown = output.with_suffix(".md")
         markdown.write_text(self._markdown(report), encoding="utf-8")
+        human_review = output.with_name(f"{output.stem}-human-review.md")
+        human_review.write_text(self._human_review_markdown(report), encoding="utf-8")
         self.stdout.write(
             self.style.SUCCESS(
-                f"Evaluation reports: {output.resolve()} and {markdown.resolve()}"
+                "Evaluation reports: "
+                f"{output.resolve()}, {markdown.resolve()}, and "
+                f"{human_review.resolve()}"
             )
         )
 
@@ -288,6 +304,9 @@ class Command(BaseCommand):
             "citations": [asdict(citation) for citation in result.citations],
             "safety_notice": result.safety_notice,
             "retry_count": diagnostics.retry_count if diagnostics else 0,
+            "input_tokens": diagnostics.input_tokens if diagnostics else None,
+            "output_tokens": diagnostics.output_tokens if diagnostics else None,
+            "total_tokens": diagnostics.total_tokens if diagnostics else None,
             "retrieval_latency_ms": (
                 diagnostics.retrieval_latency_ms if diagnostics else 0.0
             ),
@@ -307,6 +326,7 @@ class Command(BaseCommand):
             "prohibited_claims": case["prohibited_claims"],
             "passed": passed,
             "failure_reason": ",".join(reasons),
+            "failure_category": result.error_code or ("validation" if reasons else ""),
         }
 
     @staticmethod
@@ -317,6 +337,15 @@ class Command(BaseCommand):
         safety = [x for x in outcomes if x["safety_critical"]]
         retrieval = [float(x["retrieval_latency_ms"]) for x in outcomes]
         generation = [float(x["generation_latency_ms"]) for x in outcomes]
+        input_tokens = [
+            x["input_tokens"] for x in outcomes if x["input_tokens"] is not None
+        ]
+        output_tokens = [
+            x["output_tokens"] for x in outcomes if x["output_tokens"] is not None
+        ]
+        total_tokens = [
+            x["total_tokens"] for x in outcomes if x["total_tokens"] is not None
+        ]
         return {
             "supported_answer_success": Command._rate(supported, "grounding_result"),
             "grounded_answer_correctness": Command._rate(supported, "grounding_result"),
@@ -360,6 +389,17 @@ class Command(BaseCommand):
             "p95_retrieval_latency_ms": Command._percentile(retrieval, 95),
             "average_generation_latency_ms": mean(generation) if generation else None,
             "p95_generation_latency_ms": Command._percentile(generation, 95),
+            "average_input_tokens": mean(input_tokens) if input_tokens else None,
+            "average_output_tokens": mean(output_tokens) if output_tokens else None,
+            "average_total_tokens": mean(total_tokens) if total_tokens else None,
+            "total_input_tokens": sum(input_tokens) if input_tokens else None,
+            "total_output_tokens": sum(output_tokens) if output_tokens else None,
+            "total_tokens": sum(total_tokens) if total_tokens else None,
+            "structured_retry_rate": (
+                sum(x["retry_count"] > 0 for x in outcomes) / len(outcomes)
+                if outcomes
+                else None
+            ),
             "human_answer_review_required_count": sum(
                 x["unsupported_claim_review_result"] == "human_review_required"
                 for x in outcomes
@@ -415,6 +455,9 @@ class Command(BaseCommand):
             f"- Timestamp: {report['timestamp']}",
             f"- Approved: {report['case_counts']['approved']}",
             f"- Pending: {report['case_counts']['pending']}",
+            f"- Provider: {report['configuration']['generation_provider']}",
+            f"- Generation model: {report['configuration']['generation_model']}",
+            f"- Embedding model: {report['configuration']['embedding_model']}",
             "",
             "## Metrics",
             "",
@@ -428,4 +471,39 @@ class Command(BaseCommand):
                 f"unsupported_claim_review={item['unsupported_claim_review_result']}"
             )
         lines.extend(["", f"Review limitation: {report['review_limitation']}", ""])
+        return "\n".join(lines)
+
+    @staticmethod
+    def _human_review_markdown(report: dict[str, Any]) -> str:
+        lines = [
+            "# Grounded-answer human comparison",
+            "",
+            f"Provider: {report['configuration']['generation_provider']}",
+            f"Model: {report['configuration']['generation_model']}",
+            "",
+            "Review technical accuracy, completeness, clarity, grammar, verbosity, "
+            "evidence fidelity, identifiers/units, and safety wording. Structural "
+            "passes do not constitute human approval.",
+            "",
+        ]
+        for item in report["case_outcomes"]:
+            citations = ", ".join(item["evidence_ids"]) or "none"
+            lines.extend(
+                [
+                    f"## {item['case_id']}",
+                    "",
+                    f"Question: {item['question']}",
+                    "",
+                    f"Status: {item['final_status']}",
+                    "",
+                    f"Evidence labels: {citations}",
+                    "",
+                    f"Answer: {item['answer']}",
+                    "",
+                    "Reviewer outcome: pending",
+                    "",
+                    "Reviewer notes:",
+                    "",
+                ]
+            )
         return "\n".join(lines)

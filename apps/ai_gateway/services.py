@@ -25,6 +25,9 @@ class TextGenerationResult:
     provider: str
     model: str
     duration_ms: float = 0.0
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
 
 
 @dataclass(frozen=True)
@@ -33,6 +36,10 @@ class ProviderHealth:
     model: str
     available: bool
     detail: str
+    duration_ms: float = 0.0
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
 
 
 class LLMProvider(Protocol):

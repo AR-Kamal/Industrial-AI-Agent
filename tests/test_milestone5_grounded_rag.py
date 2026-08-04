@@ -703,3 +703,4 @@ def test_formal_grounded_evaluator_writes_approved_only_report(
     }
     assert report["case_outcomes"][0]["passed"] is True
     assert report["metrics"]["unsupported_query_abstention"] == 1.0
+    assert (tmp_path / "var" / "evaluation" / "mock-final-human-review.md").exists()

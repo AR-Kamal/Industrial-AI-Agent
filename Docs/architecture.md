@@ -509,3 +509,13 @@ trade-offs without choosing or applying a production threshold. Detailed JSON
 and concise Markdown reports carry the dataset digest, active index/model
 identity, retrieval configuration, case outcomes, and aggregates under
 Git-ignored `var/evaluation/`.
+# Milestone 5.1 generation-provider extension
+
+`TextGateway` remains the single generation boundary. Its explicit factory may
+resolve either the local Ollama adapter or the Google Gemini adapter; neither
+falls back to the other. Gemini uses the official non-streaming Interactions API
+with `store=False`, no tools, and a conservative JSON Schema subset. The same
+grounded prompt and application semantic validator apply to both providers.
+Optional provider usage counts flow through provider-neutral result diagnostics.
+Retrieval, evidence validation, and deterministic citation construction remain
+local and unchanged.

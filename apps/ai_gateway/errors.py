@@ -15,6 +15,22 @@ class ProviderUnavailableError(LLMGatewayError):
     code = "provider_unavailable"
 
 
+class ProviderAuthenticationError(LLMGatewayError):
+    code = "authentication_error"
+
+
+class ProviderPermissionError(LLMGatewayError):
+    code = "permission_error"
+
+
+class ProviderRateLimitError(LLMGatewayError):
+    code = "rate_limit"
+
+
+class ProviderSafetyError(LLMGatewayError):
+    code = "provider_safety_refusal"
+
+
 class ModelNotInstalledError(LLMGatewayError):
     code = "model_not_installed"
 

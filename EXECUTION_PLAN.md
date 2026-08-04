@@ -247,3 +247,10 @@ Acceptance:
   staff diagnostics, and pending human-review answer candidates. Image,
   vision, OCR, industrial integration, deployment, and Milestone 6 remain out
   of scope.
+# Milestone 5.1 — alternative Gemini generation
+
+Milestone 5.1 adds an explicit, stateless Gemini provider behind the existing
+generation gateway. It preserves the Milestone 5 retrieval/index configuration,
+prompt, validation, citations, and safety controls. Implementation and validation
+details are tracked in `.agent/MILESTONE_5_1_PLAN.md`; no permanent provider is
+selected by this work.

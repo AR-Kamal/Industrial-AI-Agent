@@ -1,6 +1,6 @@
 """Validated LLM gateway configuration."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -20,6 +20,7 @@ class LLMConfig:
     temperature: float
     max_tokens: int
     structured_output: bool = False
+    gemini_api_key: str = field(default="", repr=False)
 
 
 def get_llm_config() -> LLMConfig:
@@ -32,13 +33,14 @@ def get_llm_config() -> LLMConfig:
         temperature=float(settings.LLM_TEMPERATURE),
         max_tokens=int(settings.LLM_MAX_TOKENS),
         structured_output=bool(settings.LLM_STRUCTURED_OUTPUT),
+        gemini_api_key=str(getattr(settings, "GEMINI_API_KEY", "")).strip(),
     )
     _validate(config)
     return config
 
 
 def _validate(config: LLMConfig) -> None:
-    if config.provider != "ollama":
+    if config.provider not in {"ollama", "gemini"}:
         raise ProviderConfigurationError("Unsupported LLM provider.")
     if not config.text_model:
         raise ProviderConfigurationError("A text model must be configured.")
@@ -48,6 +50,11 @@ def _validate(config: LLMConfig) -> None:
         raise ProviderConfigurationError("Temperature must be between 0 and 2.")
     if config.max_tokens <= 0:
         raise ProviderConfigurationError("Maximum tokens must be greater than zero.")
+
+    if config.provider == "gemini":
+        if not config.gemini_api_key:
+            raise ProviderConfigurationError("A Gemini API key must be configured.")
+        return
 
     parsed = urlparse(config.base_url)
     if (
